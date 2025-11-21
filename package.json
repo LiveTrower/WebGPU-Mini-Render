@@ -1,0 +1,35 @@
+{
+  "name": "webgpu-realtime-renderer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run install-missing-dependencies && npm run build && npm run serve",
+    "install-missing-dependencies": "npm i",
+    "build": "webpack --config webpack.config.js",
+    "serve": "live-server --cors"
+  },
+  "keywords": ["WebGPU", "3D"],
+  "author": "",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amengede/webgpu-for-beginners.git"
+  },
+  "dependencies": {
+    "@types/node": "*",
+    "@webgpu/types": "*",
+    "gl-matrix": "*",
+    "jquery": "^3.7.1",
+    "live-server": "*",
+    "node": "*",
+    "ts-loader": "*",
+    "ts-shader-loader": "*",
+    "typescript": "*",
+    "webpack": "*",
+    "webpack-cli": "*"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.33"
+  }
+}
