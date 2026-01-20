@@ -2,6 +2,16 @@ import { App } from "./control/app";
 
 const canvas : HTMLCanvasElement = <HTMLCanvasElement> document.getElementById("gfx-main");
 
-const app = new App(canvas);
-app.InitializeRenderer();
-app.run();
+async function startApp() {
+    const app = new App(canvas);
+
+    try {
+        await app.InitializeRenderer();
+        
+        app.run(); 
+    } catch (error) {
+        console.error("Error durante la inicialización:", error);
+    }
+}
+
+startApp();

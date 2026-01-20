@@ -1,33 +1,21 @@
-import { Triangle } from "./triangle";
-import { Quad } from "./quad";
 import { Camera } from "./camera";
-import { vec3,mat4 } from "gl-matrix";
+import { vec3 } from "gl-matrix";
 import { object_types, RenderData } from "./definitions";
 import { Statue } from "./statue";
 
 export class Scene {
-
-    triangles: Triangle[];
-    quads: Quad[];
-    statue: Statue;
+    statues: Statue[];
+    suzanne: Statue;
+    plane: Statue;
     player: Camera;
     object_data: Float32Array;
-    triangle_count: number;
-    quad_count: number;
 
     constructor() {
-
-        this.triangles = [];
-        this.quads = [];
+        this.statues = [];
         this.object_data = new Float32Array(16 * 1024);
-        this.triangle_count = 0;
-        this.quad_count = 0;
 
-        this.make_triangles();
-        this.make_quads();
-        this.statue = new Statue(
-            [0, 0, 0], [0, 0, 0]
-        );
+        this.add_statue(new Statue("Suzanne", [0, 0, 1], [0, 0, 0], false));
+        this.add_statue(new Statue("Plane", [0, 0, 0], [0, 0, 0], false));
 
         this.player = new Camera(
             [-2, 0, 0.5], 0, 0
@@ -35,77 +23,24 @@ export class Scene {
 
     }
 
-    make_triangles() {
-        var i: number = 0;
-        for (var y:number = -5; y <= 5; y++) {
-            this.triangles.push(
-                new Triangle(
-                    [2, y, 0],
-                    0
-                )
-            );
-
-            var blank_matrix = mat4.create();
-            for (var j: number = 0; j < 16; j++) {
-                this.object_data[16 * i + j] = <number>blank_matrix[j];
-            }
-            i++;
-            this.triangle_count++;
-        }
-    }
-
-    make_quads() {
-        var i: number = this.triangle_count;
-        for (var x: number = -10; x <= 10; x++) {
-            for (var y:number = -10; y <= 10; y++) {
-                this.quads.push(
-                    new Quad(
-                        [x, y, 0]
-                    )
-                );
-
-                var blank_matrix = mat4.create();
-                for (var j: number = 0; j < 16; j++) {
-                    this.object_data[16 * i + j] = <number>blank_matrix[j];
-                }
-                i++;
-                this.quad_count++;
-            }
-        }
+    add_statue(statue: Statue) {
+        this.statues.push(statue);
     }
 
     update() {
 
         var i: number = 0;
 
-        this.triangles.forEach(
-            (triangle) => {
-                triangle.update();
-                var model = triangle.get_model();
+        this.statues.forEach(
+            (statue) => {
+                statue.update();
+                var model = statue.get_model();
                 for (var j: number = 0; j < 16; j++) {
                     this.object_data[16 * i + j] = <number>model[j];
                 }
                 i++;
             }
         );
-
-        this.quads.forEach(
-            (quad) => {
-                quad.update();
-                var model = quad.get_model();
-                for (var j: number = 0; j < 16; j++) {
-                    this.object_data[16 * i + j] = <number>model[j];
-                }
-                i++;
-            }
-        );
-
-        this.statue.update();
-        var model = this.statue.get_model();
-        for (var j: number = 0; j < 16; j++) {
-            this.object_data[16 * i + j] = <number>model[j];
-        }
-        i++;
 
         this.player.update();
     }
@@ -119,8 +54,8 @@ export class Scene {
             view_transform: this.player.get_view(),
             model_transforms: this.object_data,
             object_counts: {
-                [object_types.TRIANGLE]: this.triangle_count,
-                [object_types.QUAD]: this.quad_count,
+                [object_types.TRIANGLE]: 0,
+                [object_types.QUAD]: 0
             }
         }
     }

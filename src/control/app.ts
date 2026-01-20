@@ -1,4 +1,4 @@
-import { Renderer } from "../view/renderer";
+import { Renderer } from "../rendering/renderer";
 import { Scene } from "../model/scene";
 import $ from "jquery";
 
@@ -13,6 +13,7 @@ export class App {
     mouseXLabel: HTMLElement;
     mouseYLabel: HTMLElement;
 
+    mouse: boolean = false;
     forwards_amount: number;
     right_amount: number;
     
@@ -29,26 +30,20 @@ export class App {
 
         this.forwards_amount = 0;
         this.right_amount = 0;
-        $(document).on(
-            "keydown", 
-            (event) => {
-                this.handle_keypress(event);
-            }
-        );
-        $(document).on(
-            "keyup", 
-            (event) => {
-                this.handle_keyrelease(event);
-            }
-        );
+        
         this.canvas.onclick = () => {
             this.canvas.requestPointerLock();
-        }
+            this.turn_on_controls();
+        };
+        document.addEventListener("pointerlockchange", () => {
+            if (document.pointerLockElement !== this.canvas) {
+                this.turn_off_controls();
+            }
+        });
         this.canvas.addEventListener(
-            "mousemove", 
+            "mousemove",
             (event: MouseEvent) => {this.handle_mouse_move(event);}
         );
-        
     }
 
     async InitializeRenderer() {
@@ -72,6 +67,28 @@ export class App {
         }
     }
 
+    turn_on_controls() {
+        this.mouse = true;
+        $(document).on(
+            "keydown", 
+            (event) => {
+                this.handle_keypress(event);
+            }
+        );
+        $(document).on(
+            "keyup", 
+            (event) => {
+                this.handle_keyrelease(event);
+            }
+        );
+    }
+
+    turn_off_controls() {
+        this.mouse = false;
+        $(document).off("keyup");
+        $(document).off("keydown");
+    }
+
     handle_keypress(event: JQuery.KeyDownEvent) {
         this.keyLabel.innerText = event.code;
 
@@ -87,7 +104,6 @@ export class App {
         if (event.code == "KeyD") {
             this.right_amount = 0.02;
         }
-
     }
 
     handle_keyrelease(event: JQuery.KeyUpEvent) {
@@ -109,12 +125,14 @@ export class App {
     }
 
     handle_mouse_move(event: MouseEvent) {
-        this.mouseXLabel.innerText = event.clientX.toString();
-        this.mouseYLabel.innerText = event.clientY.toString();
+        if (this.mouse) {
+            this.mouseXLabel.innerText = event.clientX.toString();
+            this.mouseYLabel.innerText = event.clientY.toString();
         
-        this.scene.spin_player(
-            event.movementX / 5, event.movementY / 5
-        );
+            this.scene.spin_player(
+                event.movementX / 5, event.movementY / 5
+            );
+        }
     }
 
 }

@@ -26,7 +26,7 @@ export class BindGroupLayoutBuilder {
         this.binding += 1;
     }
 
-    addMaterial(visibility: number, type: GPUTextureViewDimension) {
+    addTexture(visibility: number, type: GPUTextureViewDimension) {
         this.bindGroupLayoutEntries.push({
             binding: this.binding,
             visibility: visibility,
@@ -45,11 +45,30 @@ export class BindGroupLayoutBuilder {
         this.binding += 1;
     }
 
-    async build(): Promise<GPUBindGroupLayout> {
+    addDepthTexture(visibility: number, type: GPUTextureViewDimension) {
+        this.bindGroupLayoutEntries.push({
+            binding: this.binding,
+            visibility: visibility,
+            texture: {
+                viewDimension: type,
+                sampleType: "depth",
+            }
+        });
+        this.binding += 1;
 
+        this.bindGroupLayoutEntries.push({
+            binding: this.binding,
+            visibility: visibility,
+            sampler: {
+                type: "comparison"
+            }
+        });
+        this.binding += 1;
+    }
+
+    async build(): Promise<GPUBindGroupLayout> {
         const layout: GPUBindGroupLayout = await this.device.createBindGroupLayout({entries: this.bindGroupLayoutEntries});
         this.reset();
         return layout;
-
     }
 }

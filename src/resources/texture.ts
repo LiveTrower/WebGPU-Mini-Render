@@ -1,18 +1,15 @@
-export class Material {
-    
+export class Texture {
     texture: GPUTexture
     view: GPUTextureView
     sampler: GPUSampler
-    bindGroup: GPUBindGroup;
 
-    async initialize(device: GPUDevice, name: string, bindGroupLayout: GPUBindGroupLayout) {
-
+    async createTexture(device: GPUDevice, name: string) {
         var mipCount = 0;
         var width = 0;
         var height = 0;
 
         while (true) {
-            const filename: string = "dist/img/" + name + "/" + name + String(mipCount) + ".png";
+            const filename: string = "dist/img/" + name + String(mipCount) + ".png";
             const response: Response = await fetch(filename);
 
             if (mipCount == 0) {
@@ -42,7 +39,7 @@ export class Material {
         this.texture = device.createTexture(textureDescriptor);
 
         for (var i = 0; i < mipCount; i += 1) {
-            const filename: string = "dist/img/" + name + "/" + name + String(i) + ".png";
+            const filename: string = "dist/img/" + name + String(i) + ".png";
             const response: Response = await fetch(filename);
             const blob: Blob = await response.blob();
             const imageData: ImageBitmap = await createImageBitmap(blob);
@@ -67,28 +64,41 @@ export class Material {
             magFilter: "linear",
             minFilter: "linear",
             mipmapFilter: "linear",
-            maxAnisotropy: 4
+            maxAnisotropy: 1
         };
         this.sampler = device.createSampler(samplerDescriptor);
+    }
 
-        this.bindGroup = device.createBindGroup({
-            layout: bindGroupLayout,
-            entries: [
-                {
-                    binding: 0,
-                    resource: this.view
-                },
-                {
-                    binding: 1,
-                    resource: this.sampler
-                }
-            ]
-        });
-        
+    createDepthTexture(device: GPUDevice, width: number, height: number, format: GPUTextureFormat) {
+        const textureDescriptor: GPUTextureDescriptor = {
+            size: {
+                width: width,
+                height: height
+            },
+            format: format,
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
+        };
+
+        const samplerDescriptor: GPUSamplerDescriptor = {
+            compare: "less"
+        };
+
+        this.texture = device.createTexture(textureDescriptor);
+        this.view = this.texture.createView();
+        this.sampler = device.createSampler(samplerDescriptor);
+    }
+
+    createCustomTexture(device: GPUDevice,
+        textureDescriptor: GPUTextureDescriptor,
+        viewDescriptor: GPUTextureViewDescriptor,
+        samplerDescriptor?: GPUSamplerDescriptor) {
+        this.texture = device.createTexture(textureDescriptor);
+        this.view = this.texture.createView(viewDescriptor);
+        if (samplerDescriptor)
+            this.sampler = device.createSampler(samplerDescriptor);
     }
 
     async loadImageBitmap(device: GPUDevice, imageData: ImageBitmap, mipLevel: number) {
-
         device.queue.copyExternalImageToTexture(
             {source: imageData},
             {

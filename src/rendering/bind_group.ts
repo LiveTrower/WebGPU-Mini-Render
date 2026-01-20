@@ -1,5 +1,4 @@
 export class BindGroupBuilder {
-
     device: GPUDevice;
     layout: GPUBindGroupLayout;
     entries: GPUBindGroupEntry[];
@@ -29,8 +28,7 @@ export class BindGroupBuilder {
         this.binding += 1;
     }
 
-    addMaterial(view: GPUTextureView, sampler: GPUSampler) {
-        
+    addTexture(view: GPUTextureView, sampler: GPUSampler) {
         this.entries.push({
             binding: this.binding,
             resource: view

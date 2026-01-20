@@ -29,9 +29,8 @@ fn vs_main(@builtin(vertex_index) VertexIndex: u32) -> Fragment {
 
 @fragment
 fn fs_main(@location(0) TexCoord : vec2<f32>) -> @location(0) vec4<f32> {
-
     var color: vec4<f32> =  textureSample(myTexture, mySampler, TexCoord);
     var intensity: f32 = (1.0f / 3.0f) * (color.r + color.g + color.b);
     var purple: vec3<f32> = intensity * vec3<f32>(176.0 / 255.0, 105.0 / 255.0, 219.0 / 255.0);
-    return vec4<f32>(purple, 1.0);
+    return color;
 }
