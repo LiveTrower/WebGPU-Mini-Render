@@ -15,6 +15,7 @@ struct LightData {
     color: vec3f,
 	energy: f32,
     positionWS: vec3f,
+	shadow_enabled: u32
 };
 
 struct MaterialData {
@@ -150,7 +151,12 @@ fn specular_lobe(roughness: f32, metallic: f32, f0: vec3f, cNdotH: f32, cNdotL: 
 }
 
 fn shadows(shadowPos: vec3f) -> f32 {
-	var visibility = 0.0;
+	var visibility = 1.0;
+
+	if (light.shadow_enabled == 0u) {
+		return visibility;
+	}
+
 	let oneOverShadowDepthTextureSize = 1.0 / 1024.0;
 	for (var y = -1; y <= 1; y++) {
     	for (var x = -1; x <= 1; x++) {
@@ -191,7 +197,7 @@ fn get_reflected_vector(roughness: f32, v: vec3f, n: vec3f) -> vec3f {
     return mix(ref_vec, n, roughness * roughness);
 }
 
-fn prefilteredRadiance(r: vec3f, lod: f32) -> vec3f {
+fn prefiltered_radiance(r: vec3f, lod: f32) -> vec3f {
     return textureSampleLevel(radianceCubemap, radianceSampler, r, lod).rgb;
 }
 
@@ -224,7 +230,7 @@ fn ibl(diffuse_color: vec3f, roughness: f32, ao: f32, f0: vec3f, position: vec3f
 	let diffuse_irradiance = irradiance_spherical_harmonics(normalWS);
 	let indirect_diffuse_light = diffuse_color * diffuse_irradiance * (1.0 - E) * ao;
 
-	let indirect_specular_light = E * prefilteredRadiance(r, roughness_lod);
+	let indirect_specular_light = E * prefiltered_radiance(r, roughness_lod);
 
 	*color += indirect_diffuse_light + indirect_specular_light;
 }

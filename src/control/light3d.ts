@@ -4,6 +4,7 @@ export class Light3D {
     color: vec3;
     energy: number;
     position: vec3;
+    shadowEnabled: boolean;
     lightViewMatrix: mat4;
     lightProjectionMatrix: mat4;
     lightViewProjectionMatrix: mat4;
@@ -16,11 +17,13 @@ export class Light3D {
     private posXInput: HTMLInputElement | null;
     private posYInput: HTMLInputElement | null;
     private posZInput: HTMLInputElement | null;
+    private shadowCheckbox: HTMLInputElement | null;
 
     constructor(device: GPUDevice) {
         this.color = vec3.fromValues(1.0, 1.0, 1.0);
         this.energy = 2.0;
         this.position = vec3.fromValues(-50, -100, 100);
+        this.shadowEnabled = true;
         const upVector = vec3.fromValues(0, 0, 1);
         const origin = vec3.fromValues(0, 0, 0);
         this.lightViewMatrix = mat4.create();
@@ -49,6 +52,8 @@ export class Light3D {
         this.posYInput = document.getElementById('light-pos-y') as HTMLInputElement;
         this.posZInput = document.getElementById('light-pos-z') as HTMLInputElement;
 
+        this.shadowCheckbox = document.getElementById('shadow-checkbox') as HTMLInputElement;
+
         if (this.posXInput) this.posXInput.value = this.position[0].toString();
         if (this.posYInput) this.posYInput.value = this.position[1].toString();
         if (this.posZInput) this.posZInput.value = this.position[2].toString();
@@ -56,6 +61,7 @@ export class Light3D {
         this.setupColorPickerListener();
         this.setupSliderListeners();
         this.setupPositionListeners();
+        this.setupShadowCheckboxListener();
     }
 
     private setupPositionListeners(): void {
@@ -112,6 +118,15 @@ export class Light3D {
                 const b = parseInt(hexColor.substr(5, 2), 16) / 255.0;
                 
                 this.color = vec3.fromValues(r, g, b);
+            });
+        }
+    }
+
+    private setupShadowCheckboxListener(): void {
+        if (this.shadowCheckbox) {
+            this.shadowCheckbox.addEventListener('change', (e: Event) => {
+                const target = e.target as HTMLInputElement;
+                this.shadowEnabled = target.checked;
             });
         }
     }

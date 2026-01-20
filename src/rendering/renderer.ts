@@ -262,11 +262,8 @@ export class Renderer {
         renderpass.setPipeline(this.shadowMap.pipeline);
         renderpass.setBindGroup(0, this.shadowMap.bindGroup);
 
-        var objects_drawn: number = 0;
-
         renderpass.setVertexBuffer(0, this.statueMesh.buffer);
-        renderpass.draw(this.statueMesh.vertexCount, 1, 0, objects_drawn);
-        objects_drawn += 1;
+        renderpass.draw(this.statueMesh.vertexCount, 1, 0, 0);
 
         renderpass.end();
     }
@@ -291,6 +288,7 @@ export class Renderer {
         lightData.set(this.light.color, 0);
         lightData[3] = this.light.energy;
         lightData.set(this.light.position, 4);
+        lightData[7] = this.light.shadowEnabled ? 1.0 : 0.0;
         this.device.queue.writeBuffer(this.light.lightBuffer, 0, lightData);
         
         const materialData = new Float32Array(8);
@@ -375,8 +373,10 @@ export class Renderer {
 
         this.setupMatrices(renderables);
 
-        this.drawShadowMaps(commandEncoder);
-        
+        if (this.light.shadowEnabled) {
+            this.drawShadowMaps(commandEncoder);
+        }
+
         this.drawScene(renderables, camera, commandEncoder);
 
         //this.applyPostProcessing(commandEncoder);
