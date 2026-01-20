@@ -19,7 +19,7 @@ export class Light3D {
 
     constructor(device: GPUDevice) {
         this.color = vec3.fromValues(1.0, 1.0, 1.0);
-        this.energy = 1.0;
+        this.energy = 2.0;
         this.position = vec3.fromValues(-50, -100, 100);
         const upVector = vec3.fromValues(0, 0, 1);
         const origin = vec3.fromValues(0, 0, 0);

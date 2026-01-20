@@ -64,7 +64,7 @@ export class Texture {
             magFilter: "linear",
             minFilter: "linear",
             mipmapFilter: "linear",
-            maxAnisotropy: 1
+            maxAnisotropy: 8
         };
         this.sampler = device.createSampler(samplerDescriptor);
     }

@@ -20,7 +20,7 @@ export class Material3D {
         this.color = vec3.fromValues(1.0, 1.0, 1.0);
         this.metallic = 0.0;
         this.specular = 0.5;
-        this.roughness = 0.5;
+        this.roughness = 1.0;
 
         this.materialBuffer = device.createBuffer({
             label: "material_buffer",

@@ -33,10 +33,12 @@ struct MaterialData {
 
 @binding(0) @group(1) var albedoTexture: texture_2d<f32>;
 @binding(1) @group(1) var albedoSampler: sampler;
-@binding(2) @group(1) var normalTexture: texture_2d<f32>;
-@binding(3) @group(1) var normalSampler: sampler;
-@binding(4) @group(1) var radianceCubemap: texture_cube<f32>;
-@binding(5) @group(1) var radianceSampler: sampler;
+@binding(2) @group(1) var ormTexture: texture_2d<f32>;
+@binding(3) @group(1) var ormSampler: sampler;
+@binding(4) @group(1) var normalTexture: texture_2d<f32>;
+@binding(5) @group(1) var normalSampler: sampler;
+@binding(6) @group(1) var radianceCubemap: texture_cube<f32>;
+@binding(7) @group(1) var radianceSampler: sampler;
 
 struct Vertex {
     @location(0) position: vec3f,
@@ -163,9 +165,9 @@ fn shadows(shadowPos: vec3f) -> f32 {
 	return visibility / 9.0;
 }
 
-fn shading(diffuse_color: vec3f, f0: vec3f, cLdotH: f32, cNdotH: f32, cNdotV: f32, cNdotL: f32, shadowPos: vec3f, color: ptr<function, vec3f>) {
-	let direct_diffuse_light = diffuse_color * vec3(Diffuse_Burley(cLdotH, cNdotV, cNdotL, material.roughness));
-	let direct_specular_light = specular_lobe(max(material.roughness, 0.01), material.metallic, f0, cNdotH, cNdotL, cNdotV, cLdotH);
+fn shading(diffuse_color: vec3f, roughness: f32, f0: vec3f, cLdotH: f32, cNdotH: f32, cNdotV: f32, cNdotL: f32, shadowPos: vec3f, color: ptr<function, vec3f>) {
+	let direct_diffuse_light = diffuse_color * vec3(Diffuse_Burley(cLdotH, cNdotV, cNdotL, roughness));
+	let direct_specular_light = specular_lobe(max(roughness, 0.01), material.metallic, f0, cNdotH, cNdotL, cNdotV, cLdotH);
 	let visibility = shadows(shadowPos);
 
 	if (cNdotL != 0.0) {
@@ -208,26 +210,26 @@ fn irradiance_spherical_harmonics(n: vec3f) -> vec3f {
 	return max(sphericalHarmonics, vec3(0.0));
 }
 
-fn ibl(diffuse_color: vec3f, f0: vec3f, position: vec3f, normal: vec3f, cNdotV: f32, color: ptr<function, vec3f>) {
+fn ibl(diffuse_color: vec3f, roughness: f32, ao: f32, f0: vec3f, position: vec3f, normal: vec3f, cNdotV: f32, color: ptr<function, vec3f>) {
 	let viewWS = position - data.cameraPos;
 	let normalWS = (data.invViewMatrix * vec4(normal, 0.0)).xyz;
-	let r = get_reflected_vector(material.roughness, viewWS, normalWS) * vec3(-1.0, -1.0, -1.0);
-	let roughness_lod = sqrt(material.roughness) * MAX_ROUGHNESS_LOD;
+	let r = get_reflected_vector(roughness, viewWS, normalWS) * vec3(-1.0, -1.0, -1.0);
+	let roughness_lod = sqrt(roughness) * MAX_ROUGHNESS_LOD;
 
 	// cheap luminance approximation
 	let f90 = clamp(50.0 * f0.g, material.metallic, 1.0);
-	let envBRDF = BRDF_Aprox(material.roughness, cNdotV);
+	let envBRDF = BRDF_Aprox(roughness, cNdotV);
 	let E = envBRDF.x * f0 + envBRDF.y * f90;
 
 	let diffuse_irradiance = irradiance_spherical_harmonics(normalWS);
-	let indirect_diffuse_light = diffuse_color * diffuse_irradiance * (1.0 - E);
+	let indirect_diffuse_light = diffuse_color * diffuse_irradiance * (1.0 - E) * ao;
 
 	let indirect_specular_light = E * prefilteredRadiance(r, roughness_lod);
 
 	*color += indirect_diffuse_light + indirect_specular_light;
 }
 
-fn directionalLight(albedo: vec3f, position: vec3f, normal: vec3f, shadowPos: vec3f) -> vec3f {
+fn directional_light(albedo: vec3f, roughness: f32, ao: f32, position: vec3f, normal: vec3f, shadowPos: vec3f) -> vec3f {
 	let positionVS = (data.viewMatrix * vec4(position, 1.0)).xyz;
 	let lightVS = (data.viewMatrix * vec4(light.positionWS, 0.0)).xyz;
 	let f0 = F0(material.metallic, material.specular, albedo);
@@ -244,13 +246,13 @@ fn directionalLight(albedo: vec3f, position: vec3f, normal: vec3f, shadowPos: ve
 
 	var color = vec3(0.0);
 
-	shading(diffuse_color, f0, cLdotH, cNdotH, cNdotV, cNdotL, shadowPos, &color);
-	ibl(diffuse_color, f0, position, normal, cNdotV, &color);
+	shading(diffuse_color, roughness, f0, cLdotH, cNdotH, cNdotV, cNdotL, shadowPos, &color);
+	ibl(diffuse_color, roughness, ao, f0, position, normal, cNdotV, &color);
 
 	return color;
 }
 
-fn pointLight(albedo: vec3f, position: vec3f, normal: vec3f, shadowPos: vec3f) -> vec3f {
+fn point_light(albedo: vec3f, roughness: f32, ao: f32, position: vec3f, normal: vec3f, shadowPos: vec3f) -> vec3f {
 	let positionVS = (data.viewMatrix * vec4(position, 1.0)).xyz;
 	let lightVS = (data.viewMatrix * vec4(light.positionWS, 1.0)).xyz;
     let lightVec = normalize(lightVS - positionVS);
@@ -274,19 +276,29 @@ fn pointLight(albedo: vec3f, position: vec3f, normal: vec3f, shadowPos: vec3f) -
 
 	var color = vec3(0.0);
 
-	shading(diffuse_color, f0, cLdotH, cNdotH, cNdotV, cNdotL, shadowPos, &color);
-	ibl(diffuse_color, f0, position, normal, cNdotV, &color);
+	shading(diffuse_color, roughness, f0, cLdotH, cNdotH, cNdotV, cNdotL, shadowPos, &color);
+	ibl(diffuse_color, roughness, ao, f0, position, normal, cNdotV, &color);
 
     return color;
+}
+
+fn normal_tangent(normal_map: vec2f, tbnMatrix: mat3x3f) -> vec3f {
+	let xy = normal_map * 2.0 - 1.0;
+	let z = sqrt(max(0.0, 1.0 - dot(xy, xy)));
+	let normal = vec3(xy, z);
+	return tbnMatrix * normal;
 }
 
 @fragment
 fn fs_main(vsOut: VSOutput) -> @location(0) vec4f {
 	let tbnMatrix = mat3x3f(vsOut.tangentVS, vsOut.bitangentVS, vsOut.normalVS);
-    let albedoMap = textureSample(albedoTexture, albedoSampler, vsOut.uv * 2.0).rgb;
-	let normalMap = textureSample(normalTexture, normalSampler, vsOut.uv * 2.0).rgb * 2.0 - 1.0;
-	let albedo = material.color * albedoMap;
-	let normal = tbnMatrix * normalMap; // Normal view-space
-    let color = directionalLight(albedo, vsOut.positionWS, normal, vsOut.shadowPos);
+    let albedo_map = textureSample(albedoTexture, albedoSampler, vsOut.uv * 2.0).rgb;
+	let orm_map = textureSample(ormTexture, ormSampler, vsOut.uv * 2.0).rg;
+	let normal_map = textureSample(normalTexture, normalSampler, vsOut.uv * 2.0).rg;
+	let albedo = material.color * albedo_map;
+	let roughness = material.roughness * orm_map.g;
+	let ao = orm_map.r;
+	let normal = normal_tangent(normal_map, tbnMatrix); // Normal view-space
+    let color = directional_light(albedo, roughness, ao, vsOut.positionWS, normal, vsOut.shadowPos);
     return vec4(color, 1.0);
 }

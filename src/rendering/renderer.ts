@@ -50,6 +50,7 @@ export class Renderer {
     planeMesh: ObjMesh;
     material3D: Material3D;
     woodAlbedoTexture: Texture;
+    woodORMTexture: Texture;
     woodNormalTexture: Texture;
     objectBuffer: GPUBuffer;
     light: Light3D;
@@ -146,6 +147,7 @@ export class Renderer {
 
         builder.addTexture(GPUShaderStage.FRAGMENT, "2d");
         builder.addTexture(GPUShaderStage.FRAGMENT, "2d");
+        builder.addTexture(GPUShaderStage.FRAGMENT, "2d");
         builder.addTexture(GPUShaderStage.FRAGMENT, "cube");
         this.materialGroupLayout = await builder.build();
 
@@ -177,6 +179,7 @@ export class Renderer {
         await this.planeMesh.initialize(this.device, "dist/models/Plane.obj");
         this.material3D = new Material3D(this.device);  
         this.woodAlbedoTexture = new Texture();
+        this.woodORMTexture = new Texture();
         this.woodNormalTexture = new Texture();
         this.light = new Light3D(this.device);
 
@@ -196,6 +199,7 @@ export class Renderer {
         });
 
         await this.woodAlbedoTexture.createTexture(this.device, "Planks/PlanksAlbedo");
+        await this.woodORMTexture.createTexture(this.device, "Planks/PlanksORM");
         await this.woodNormalTexture.createTexture(this.device, "Planks/PlanksNormal");
 
         //await this.postProcessing.initialize(this.device, this.canvas, this.format);
@@ -217,6 +221,7 @@ export class Renderer {
 
         builder.setLayout(this.materialGroupLayout);
         builder.addTexture(this.woodAlbedoTexture.view, this.woodAlbedoTexture.sampler);
+        builder.addTexture(this.woodORMTexture.view, this.woodORMTexture.sampler);
         builder.addTexture(this.woodNormalTexture.view, this.woodNormalTexture.sampler);
         builder.addTexture(this.sky.cubemap.view, this.sky.cubemap.sampler);
         this.materialBindGroup = await builder.build();
