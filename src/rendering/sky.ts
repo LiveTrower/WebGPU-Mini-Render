@@ -25,7 +25,7 @@ export class Sky {
         this.buffer = device.createBuffer(parameterBufferDescriptor);
 
         this.cubemap = new CubeMapTexture();
-        await this.cubemap.initialize(device, "cubemap_roughness/");
+        await this.cubemap.initialize(device, "cubemap_roughness/", 1024, 1024, 7);
 
         this.format = format;
         this.cubeMesh = new CubeMesh(device);

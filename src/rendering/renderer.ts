@@ -9,7 +9,7 @@ import { Material3D } from "../control/material3d";
 import { BindGroupLayoutBuilder } from "./bind_group_layout";
 import { BindGroupBuilder } from "./bind_group";
 import { RenderPipelineBuilder } from "./pipeline";
-import { PostProcessing } from "./post_processing";
+import { ToneMapper } from "./tone_mapper";
 import { Sky } from "./sky";
 import { ShadowMap } from "./shadow_map";
 import { Deg2Rad } from "../model/common_math";
@@ -45,7 +45,7 @@ export class Renderer {
     // Assets
     shadowMap: ShadowMap;
     sky: Sky;
-    //postProcessing: PostProcessing;
+    toneMapper: ToneMapper;
     statueMesh: ObjMesh;
     planeMesh: ObjMesh;
     material3D: Material3D;
@@ -59,7 +59,7 @@ export class Renderer {
         this.canvas = canvas;
         this.shadowMap = new ShadowMap();
         this.sky = new Sky();
-        //this.postProcessing = new PostProcessing();
+        this.toneMapper = new ToneMapper();
     }
 
     async Initialize() {
@@ -151,7 +151,7 @@ export class Renderer {
         builder.addTexture(GPUShaderStage.FRAGMENT, "cube");
         this.materialGroupLayout = await builder.build();
 
-        //await this.postProcessing.makeBindGroupsLayout(builder);
+        await this.toneMapper.makeBindGroupsLayout(builder);
     }
 
     async makePipelines() {
@@ -164,12 +164,12 @@ export class Renderer {
         builder.addBindGroupLayout(this.materialGroupLayout);
         builder.addVertexBufferDescription(this.statueMesh.bufferLayout);
         builder.setSourceCode(light_shader, "fs");
-        builder.addColorFormat(this.format);
+        builder.addColorFormat("rgba16float");
         builder.setDepthStencilState(this.depthStencilState);
         builder.setCullMode("back");
         this.lightPipeline = await builder.buildRenderPipeline();
         
-        //await this.postProcessing.makePipeline(builder);
+        await this.toneMapper.makePipeline(builder);
     }
 
     async createAssets() {
@@ -184,7 +184,7 @@ export class Renderer {
         this.light = new Light3D(this.device);
 
         await this.shadowMap.initialize(this.device, [1024, 1024]);
-        await this.sky.initialize(this.device, this.format);
+        await this.sky.initialize(this.device, "rgba16float");
 
         this.objectBuffer = this.device.createBuffer({
             label: "model_buffer",
@@ -198,11 +198,11 @@ export class Renderer {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
-        await this.woodAlbedoTexture.createTexture(this.device, "Planks/PlanksAlbedo");
-        await this.woodORMTexture.createTexture(this.device, "Planks/PlanksORM");
-        await this.woodNormalTexture.createTexture(this.device, "Planks/PlanksNormal");
+        await this.woodAlbedoTexture.createTexture(this.device, "Planks/PlanksAlbedo", 1024, 1024, 11);
+        await this.woodORMTexture.createTexture(this.device, "Planks/PlanksORM", 1024, 1024, 11);
+        await this.woodNormalTexture.createTexture(this.device, "Planks/PlanksNormal", 1024, 1024, 11);
 
-        //await this.postProcessing.initialize(this.device, this.canvas, this.format);
+        await this.toneMapper.initialize(this.device, this.canvas, this.format);
     }
 
     async makeBindGroups() {
@@ -225,6 +225,8 @@ export class Renderer {
         builder.addTexture(this.woodNormalTexture.view, this.woodNormalTexture.sampler);
         builder.addTexture(this.sky.cubemap.view, this.sky.cubemap.sampler);
         this.materialBindGroup = await builder.build();
+
+        await this.toneMapper.makeBindGroups(builder);
     }
 
     setupMatrices(renderables: RenderData) {
@@ -302,12 +304,10 @@ export class Renderer {
     drawScene(renderables: RenderData, camera: Camera, commandEncoder: GPUCommandEncoder) {
         this.prepareScene(renderables, camera);
 
-        const textureView : GPUTextureView = this.context.getCurrentTexture().createView();
-
         //renderpass: holds draw commands, allocated from command encoder
         const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
-                view: textureView,
+                view: this.toneMapper.framebuffer.view,
                 loadOp: "clear",
                 storeOp: "store"
             }],
@@ -343,7 +343,9 @@ export class Renderer {
         renderpass.end();
     }
 
-    /*async applyPostProcessing(commandEncoder: GPUCommandEncoder) {
+    async applyToneMapping(commandEncoder: GPUCommandEncoder) {
+        this.toneMapper.writeBuffer(this.device);
+
         //texture view: image view to the color buffer in this case
         const textureView : GPUTextureView = this.context.getCurrentTexture().createView();
         //renderpass: holds draw commands, allocated from command encoder
@@ -355,12 +357,12 @@ export class Renderer {
             }]
         });
 
-        renderpass.setPipeline(this.postProcessing.pipeline);
-        renderpass.setBindGroup(0, this.postProcessing.framebuffer.bindGroup);
-        renderpass.draw(6, 1, 0, 0);
+        renderpass.setPipeline(this.toneMapper.pipeline);
+        renderpass.setBindGroup(0, this.toneMapper.bindGroup);
+        renderpass.draw(3, 1, 0, 0);
 
         renderpass.end();
-    }*/
+    }
 
     async render(renderables: RenderData, camera: Camera) {
         //Early exit tests
@@ -379,7 +381,7 @@ export class Renderer {
 
         this.drawScene(renderables, camera, commandEncoder);
 
-        //this.applyPostProcessing(commandEncoder);
+        this.applyToneMapping(commandEncoder);
     
         this.device.queue.submit([commandEncoder.finish()]);
     }

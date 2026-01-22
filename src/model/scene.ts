@@ -18,7 +18,7 @@ export class Scene {
         this.add_statue(new Statue("Plane", [0, 0, 0], [0, 0, 0], false));
 
         this.player = new Camera(
-            [-2, 0, 0.5], 0, 0
+            [-3, 0, 1.0], 0, 0
         );
 
     }

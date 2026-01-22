@@ -4,12 +4,7 @@ export class CubeMapTexture {
     view: GPUTextureView
     sampler: GPUSampler
 
-    async initialize(device: GPUDevice, dir: string) {
-
-        var mipCount = 1;
-        var width = 0;
-        var height = 0;
-
+    async initialize(device: GPUDevice, dir: string, width: number, height: number, mipCount: number) {
         const faceNames = [
             "nz",
             "pz",
@@ -18,24 +13,6 @@ export class CubeMapTexture {
             "py",
             "ny",
         ]
-
-        while (true) {
-            const filename: string = "dist/img/" + dir + String(mipCount) + "_" + faceNames[0] + ".png";
-            const response: Response = await fetch(filename);
-
-            if (!response.ok) {
-                break;
-            }
-            mipCount += 1;
-        }
-
-        const firstFilename: string = "dist/img/" + dir + "0_" + faceNames[0] + ".png";
-        const firstResponse: Response = await fetch(firstFilename);
-        const firstBlob: Blob = await firstResponse.blob();
-        const firstImageData: ImageBitmap = await createImageBitmap(firstBlob);
-        width = firstImageData.width;
-        height = firstImageData.height;
-        firstImageData.close();
 
         const textureDescriptor: GPUTextureDescriptor = {
             dimension: "2d",

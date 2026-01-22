@@ -3,29 +3,7 @@ export class Texture {
     view: GPUTextureView
     sampler: GPUSampler
 
-    async createTexture(device: GPUDevice, name: string) {
-        var mipCount = 0;
-        var width = 0;
-        var height = 0;
-
-        while (true) {
-            const filename: string = "dist/img/" + name + String(mipCount) + ".png";
-            const response: Response = await fetch(filename);
-
-            if (mipCount == 0) {
-                const blob: Blob = await response.blob();
-                const imageData: ImageBitmap = await createImageBitmap(blob);
-                width = imageData.width;
-                height = imageData.height;
-                imageData.close();
-            }
-            
-            if (!response.ok) {
-                break;
-            }
-            mipCount += 1;
-        }
-
+    async createTexture(device: GPUDevice, name: string, width: number, height: number, mipCount: number) {
         const textureDescriptor: GPUTextureDescriptor = {
             size: {
                 width: width,
