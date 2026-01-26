@@ -3,7 +3,7 @@ import { mat4, vec3 } from "gl-matrix";
 import { Texture } from "../resources/texture";
 import { RenderData } from "../model/definitions";
 import { ObjMesh } from "../resources/obj_mesh";
-import { Camera } from "../model/camera";
+import { Camera3D } from "../control/camera3d";
 import { Light3D } from "../control/light3d";
 import { Material3D } from "../control/material3d";
 import { BindGroupLayoutBuilder } from "./bind_group_layout";
@@ -12,7 +12,7 @@ import { RenderPipelineBuilder } from "./pipeline";
 import { ToneMapper } from "./tone_mapper";
 import { Sky } from "./sky";
 import { ShadowMap } from "./shadow_map";
-import { Deg2Rad } from "../model/common_math";
+import { FrameBuffers } from "../resources/framebuffers";
 
 export class Renderer {
     canvas: HTMLCanvasElement;
@@ -21,13 +21,10 @@ export class Renderer {
     adapter: GPUAdapter;
     device: GPUDevice;
     context: GPUCanvasContext;
-    format : GPUTextureFormat;
 
-    projectionMatrix: mat4;
     viewMatrix: mat4;
     invViewMatrix: mat4;
     viewProjectionMatrix: mat4;
-    skyMatrix: mat4;
 
     // Pipeline objects
     dataBuffer: GPUBuffer;
@@ -36,11 +33,6 @@ export class Renderer {
     materialGroupLayout: GPUBindGroupLayout;
     lightBindGroup: GPUBindGroup;
     materialBindGroup: GPUBindGroup;
-
-    // Depth stuff
-    depthTexture: Texture;
-    depthStencilState: GPUDepthStencilState;
-    depthStencilAttachment: GPURenderPassDepthStencilAttachment;
 
     // Assets
     shadowMap: ShadowMap;
@@ -55,11 +47,14 @@ export class Renderer {
     objectBuffer: GPUBuffer;
     light: Light3D;
 
+    framebuffers: FrameBuffers;
+
     constructor(canvas: HTMLCanvasElement){
         this.canvas = canvas;
         this.shadowMap = new ShadowMap();
         this.sky = new Sky();
         this.toneMapper = new ToneMapper();
+        this.framebuffers = new FrameBuffers();
     }
 
     async Initialize() {
@@ -69,7 +64,7 @@ export class Renderer {
 
         await this.createAssets();
 
-        await this.makeDepthBufferResources();
+        await this.setupFrameBuffers();
     
         await this.makePipelines();
 
@@ -85,51 +80,18 @@ export class Renderer {
         this.device = <GPUDevice> await this.adapter?.requestDevice();
         //context: similar to vulkan instance (or OpenGL context)
         this.context = <GPUCanvasContext> this.canvas.getContext("webgpu");
-        this.format = navigator.gpu.getPreferredCanvasFormat();
+        const format = navigator.gpu.getPreferredCanvasFormat();
         this.context.configure({
             device: this.device,
-            format: this.format,
+            format: format,
             alphaMode: "opaque"
         });
     }
 
-    async makeDepthBufferResources() {
-        this.depthTexture = new Texture();
-
-        this.depthStencilState = {
-            format: "depth24plus-stencil8",
-            depthWriteEnabled: true,
-            depthCompare: "less",
-        };
-
-        const size: GPUExtent3D = {
-            width: this.canvas.width,
-            height: this.canvas.height,
-            depthOrArrayLayers: 1
-        };
-        const depthBufferDescriptor: GPUTextureDescriptor = {
-            size: size,
-            format: "depth24plus-stencil8",
-            usage: GPUTextureUsage.RENDER_ATTACHMENT
-        }
-
-        const viewDescriptor: GPUTextureViewDescriptor = {
-            format: "depth24plus-stencil8",
-            dimension: "2d",
-            aspect: "all"
-        };
-
-        this.depthTexture.createCustomTexture(this.device, depthBufferDescriptor, viewDescriptor);
-        
-        this.depthStencilAttachment = {
-            view: this.depthTexture.view,
-            depthClearValue: 1.0,
-            depthLoadOp: "clear",
-            depthStoreOp: "store",
-            stencilClearValue: 0,
-            stencilLoadOp: "clear",
-            stencilStoreOp: "store"
-        };
+    async setupFrameBuffers() {
+        this.framebuffers.setupColorBuffer(this.device, this.canvas);
+        this.framebuffers.setupDepthBuffer(this.device, this.canvas);
+        this.framebuffers.setupMSAABuffer(this.device, this.canvas, this.context);
     }
 
     async makeBindGroupLayouts() {
@@ -158,18 +120,18 @@ export class Renderer {
         var builder: RenderPipelineBuilder = new RenderPipelineBuilder(this.device);
 
         await this.shadowMap.makePipeline(builder, this.statueMesh.bufferLayout);
-        await this.sky.makePipeline(builder, this.depthStencilState);
+        await this.sky.makePipeline(builder, this.framebuffers.colorFormat, this.framebuffers.depthStencilState);
 
         builder.addBindGroupLayout(this.lightBindGroupLayout);
         builder.addBindGroupLayout(this.materialGroupLayout);
         builder.addVertexBufferDescription(this.statueMesh.bufferLayout);
         builder.setSourceCode(light_shader, "fs");
-        builder.addColorFormat("rgba16float");
-        builder.setDepthStencilState(this.depthStencilState);
+        builder.addColorFormat(this.framebuffers.colorFormat);
+        builder.setDepthStencilState(this.framebuffers.depthStencilState);
         builder.setCullMode("back");
         this.lightPipeline = await builder.buildRenderPipeline();
         
-        await this.toneMapper.makePipeline(builder);
+        await this.toneMapper.makePipeline(builder, this.framebuffers.canvasFormat);
     }
 
     async createAssets() {
@@ -184,7 +146,7 @@ export class Renderer {
         this.light = new Light3D(this.device);
 
         await this.shadowMap.initialize(this.device, [1024, 1024]);
-        await this.sky.initialize(this.device, "rgba16float");
+        await this.sky.initialize(this.device);
 
         this.objectBuffer = this.device.createBuffer({
             label: "model_buffer",
@@ -201,8 +163,6 @@ export class Renderer {
         await this.woodAlbedoTexture.createTexture(this.device, "Planks/PlanksAlbedo", 1024, 1024, 11);
         await this.woodORMTexture.createTexture(this.device, "Planks/PlanksORM", 1024, 1024, 11);
         await this.woodNormalTexture.createTexture(this.device, "Planks/PlanksNormal", 1024, 1024, 11);
-
-        await this.toneMapper.initialize(this.device, this.canvas, this.format);
     }
 
     async makeBindGroups() {
@@ -226,26 +186,21 @@ export class Renderer {
         builder.addTexture(this.sky.cubemap.view, this.sky.cubemap.sampler);
         this.materialBindGroup = await builder.build();
 
-        await this.toneMapper.makeBindGroups(builder);
+        await this.toneMapper.makeBindGroups(builder, this.framebuffers.colorBuffer);
     }
 
-    setupMatrices(renderables: RenderData) {
+    setupMatrices(renderables: RenderData, camera: Camera3D) {
         //make transforms
-        this.projectionMatrix = mat4.create();
-        mat4.perspective(this.projectionMatrix, Deg2Rad(60), this.canvas.width/this.canvas.height, 0.1, 3000);
-
         this.viewMatrix = renderables.view_transform;
 
         this.invViewMatrix = mat4.create();
         mat4.invert(this.invViewMatrix, this.viewMatrix);
 
         this.viewProjectionMatrix = mat4.create();
-        mat4.multiply(this.viewProjectionMatrix, this.projectionMatrix, this.viewMatrix);
+        mat4.multiply(this.viewProjectionMatrix, camera.projectionMatrix, this.viewMatrix);
 
         const modelMatrix = mat4.create();
         mat4.fromScaling(modelMatrix, vec3.fromValues(1000, 1000, 1000));
-        this.skyMatrix = mat4.create();
-        mat4.multiply(this.skyMatrix, this.viewProjectionMatrix, modelMatrix);
     }
 
     drawShadowMaps(commandEncoder: GPUCommandEncoder) {
@@ -270,8 +225,8 @@ export class Renderer {
         renderpass.end();
     }
 
-    prepareScene(renderables: RenderData, camera: Camera) {
-        this.sky.writeBuffer(this.device, this.skyMatrix);
+    prepareScene(renderables: RenderData, camera: Camera3D) {
+        this.sky.writeBuffer(this.device, camera, this.canvas.height, this.canvas.width);
 
         this.device.queue.writeBuffer(
             this.objectBuffer, 0, 
@@ -279,12 +234,14 @@ export class Renderer {
             renderables.model_transforms.length
         );
 
-        this.device.queue.writeBuffer(this.dataBuffer, 0, new Float32Array(this.viewMatrix));
-        this.device.queue.writeBuffer(this.dataBuffer, 64, new Float32Array(this.invViewMatrix)); 
-        this.device.queue.writeBuffer(this.dataBuffer, 128, new Float32Array(this.projectionMatrix));
-        this.device.queue.writeBuffer(this.dataBuffer, 192, new Float32Array(this.viewProjectionMatrix));
-        this.device.queue.writeBuffer(this.dataBuffer, 256, new Float32Array(this.light.lightViewProjectionMatrix));
-        this.device.queue.writeBuffer(this.dataBuffer, 320, new Float32Array(camera.position));
+        const sceneData = new Float32Array(83);
+        sceneData.set(this.viewMatrix, 0);
+        sceneData.set(this.invViewMatrix, 16);
+        sceneData.set(camera.projectionMatrix, 32);
+        sceneData.set(this.viewProjectionMatrix, 48);
+        sceneData.set(this.light.lightViewProjectionMatrix, 64);
+        sceneData.set(camera.position, 80);
+        this.device.queue.writeBuffer(this.dataBuffer, 0, sceneData);
 
         const lightData = new Float32Array(8);
         lightData.set(this.light.color, 0);
@@ -301,23 +258,22 @@ export class Renderer {
         this.device.queue.writeBuffer(this.material3D.materialBuffer, 0, materialData);
     }
 
-    drawScene(renderables: RenderData, camera: Camera, commandEncoder: GPUCommandEncoder) {
+    drawScene(renderables: RenderData, camera: Camera3D, commandEncoder: GPUCommandEncoder) {
         this.prepareScene(renderables, camera);
 
         //renderpass: holds draw commands, allocated from command encoder
         const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
-                view: this.toneMapper.framebuffer.view,
+                view: this.framebuffers.colorBuffer.view,
                 loadOp: "clear",
                 storeOp: "store"
             }],
-            depthStencilAttachment: this.depthStencilAttachment,
+            depthStencilAttachment: this.framebuffers.depthStencilAttachment,
         });
 
         renderpass.setPipeline(this.sky.pipeline);
         renderpass.setBindGroup(0, this.sky.bindGroup);
-        renderpass.setVertexBuffer(0, this.sky.cubeMesh.buffer);
-        renderpass.draw(36);
+        renderpass.draw(6, 1, 0, 0);
         
         renderpass.setPipeline(this.lightPipeline);
         renderpass.setBindGroup(0, this.lightBindGroup);
@@ -344,11 +300,19 @@ export class Renderer {
     }
 
     async applyToneMapping(commandEncoder: GPUCommandEncoder) {
-        this.toneMapper.writeBuffer(this.device);
-
         //texture view: image view to the color buffer in this case
         const textureView : GPUTextureView = this.context.getCurrentTexture().createView();
         //renderpass: holds draw commands, allocated from command encoder
+        /*const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: this.framebuffers.colorMSAABuffer.view,
+                resolveTarget: textureView,
+                clearValue: [0, 0, 0, 0],
+                loadOp: "clear",
+                storeOp: "discard"
+            }]
+        });*/
+
         const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 view: textureView,
@@ -364,7 +328,7 @@ export class Renderer {
         renderpass.end();
     }
 
-    async render(renderables: RenderData, camera: Camera) {
+    async render(renderables: RenderData, camera: Camera3D) {
         //Early exit tests
         if (!this.device || !this.lightPipeline) {
             return;
@@ -373,7 +337,7 @@ export class Renderer {
         //command encoder: records draw commands for submission
         const commandEncoder : GPUCommandEncoder = this.device.createCommandEncoder();
 
-        this.setupMatrices(renderables);
+        this.setupMatrices(renderables, camera);
 
         if (this.light.shadowEnabled) {
             this.drawShadowMaps(commandEncoder);

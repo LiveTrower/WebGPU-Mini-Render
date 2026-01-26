@@ -8,25 +8,17 @@ export class App {
     renderer: Renderer;
     scene: Scene;
 
-    //Labels for displaying state
-    keyLabel: HTMLElement;
-    mouseXLabel: HTMLElement;
-    mouseYLabel: HTMLElement;
-
     mouse: boolean = false;
     forwards_amount: number;
     right_amount: number;
+    speed: number = 2.0;
     
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
 
         this.renderer = new Renderer(canvas);
 
-        this.scene = new Scene();
-
-        this.keyLabel = <HTMLElement>document.getElementById("key-label");
-        this.mouseXLabel = <HTMLElement>document.getElementById("mouse-x-label");
-        this.mouseYLabel = <HTMLElement>document.getElementById("mouse-y-label");
+        this.scene = new Scene(canvas);
 
         this.forwards_amount = 0;
         this.right_amount = 0;
@@ -90,25 +82,21 @@ export class App {
     }
 
     handle_keypress(event: JQuery.KeyDownEvent) {
-        this.keyLabel.innerText = event.code;
-
         if (event.code == "KeyW") {
-            this.forwards_amount = 0.02;
+            this.forwards_amount = 0.02 * this.speed;
         }
         if (event.code == "KeyS") {
-            this.forwards_amount = -0.02;
+            this.forwards_amount = -0.02 * this.speed;
         }
         if (event.code == "KeyA") {
-            this.right_amount = -0.02;
+            this.right_amount = -0.02 * this.speed;
         }
         if (event.code == "KeyD") {
-            this.right_amount = 0.02;
+            this.right_amount = 0.02 * this.speed;
         }
     }
 
     handle_keyrelease(event: JQuery.KeyUpEvent) {
-        this.keyLabel.innerText = event.code;
-
         if (event.code == "KeyW") {
             this.forwards_amount = 0;
         }
@@ -126,9 +114,6 @@ export class App {
 
     handle_mouse_move(event: MouseEvent) {
         if (this.mouse) {
-            this.mouseXLabel.innerText = event.clientX.toString();
-            this.mouseYLabel.innerText = event.clientY.toString();
-        
             this.scene.spin_player(
                 event.movementX / 5, event.movementY / 5
             );

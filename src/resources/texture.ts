@@ -68,10 +68,16 @@ export class Texture {
 
     createCustomTexture(device: GPUDevice,
         textureDescriptor: GPUTextureDescriptor,
-        viewDescriptor: GPUTextureViewDescriptor,
+        viewDescriptor?: GPUTextureViewDescriptor,
         samplerDescriptor?: GPUSamplerDescriptor) {
         this.texture = device.createTexture(textureDescriptor);
-        this.view = this.texture.createView(viewDescriptor);
+        
+        if (viewDescriptor) {
+            this.view = this.texture.createView(viewDescriptor);
+        } else {
+            this.view = this.texture.createView();
+        }
+
         if (samplerDescriptor)
             this.sampler = device.createSampler(samplerDescriptor);
     }

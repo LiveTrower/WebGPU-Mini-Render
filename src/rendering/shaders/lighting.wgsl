@@ -1,4 +1,4 @@
-struct RenderData {
+struct GlobalUniforms {
     viewMatrix: mat4x4f,
 	invViewMatrix: mat4x4f,
     projectionMatrix: mat4x4f,
@@ -11,23 +11,23 @@ struct ObjectData {
     model: array<mat4x4f>,
 };
 
-struct LightData {
+struct LightUniforms {
     color: vec3f,
 	energy: f32,
     positionWS: vec3f,
 	shadow_enabled: u32
 };
 
-struct MaterialData {
+struct MaterialUniforms {
 	color: vec3f,
 	metallic: f32,
 	specular: f32,
 	roughness: f32
 }
 
-@binding(0) @group(0) var<uniform> data: RenderData;
-@binding(1) @group(0) var<uniform> light: LightData;
-@binding(2) @group(0) var<uniform> material: MaterialData;
+@binding(0) @group(0) var<uniform> global: GlobalUniforms;
+@binding(1) @group(0) var<uniform> light: LightUniforms;
+@binding(2) @group(0) var<uniform> material: MaterialUniforms;
 @binding(3) @group(0) var<storage, read> objects: ObjectData;
 @binding(4) @group(0) var shadowMap: texture_depth_2d;
 @binding(5) @group(0) var shadowSampler: sampler_comparison;
@@ -63,14 +63,14 @@ struct VSOutput {
 fn vs_main(@builtin(instance_index) ID: u32, vert: Vertex) -> VSOutput {
     var output : VSOutput;
 
-    output.positionCS = data.viewProjectionMatrix * objects.model[ID] * vec4(vert.position, 1.0);
+    output.positionCS = global.viewProjectionMatrix * objects.model[ID] * vec4(vert.position, 1.0);
 	output.positionWS = (objects.model[ID] * vec4(vert.position, 1.0)).xyz;
     output.uv = vert.uv;
-    output.normalVS = (data.viewMatrix * objects.model[ID] * vec4(vert.normal, 0.0)).xyz;
-	output.tangentVS = (data.viewMatrix * objects.model[ID] * vec4(vert.tangent, 0.0)).xyz;
-	output.bitangentVS = (data.viewMatrix * objects.model[ID] * vec4(vert.bitangent, 0.0)).xyz;
+    output.normalVS = (global.viewMatrix * objects.model[ID] * vec4(vert.normal, 0.0)).xyz;
+	output.tangentVS = (global.viewMatrix * objects.model[ID] * vec4(vert.tangent, 0.0)).xyz;
+	output.bitangentVS = (global.viewMatrix * objects.model[ID] * vec4(vert.bitangent, 0.0)).xyz;
 
-	let shadowProj = data.lightViewProjMatrix * objects.model[ID] * vec4(vert.position, 1.0);
+	let shadowProj = global.lightViewProjMatrix * objects.model[ID] * vec4(vert.position, 1.0);
 	let posFromLight = shadowProj.xyz / shadowProj.w;
     output.shadowPos = vec3(
 		posFromLight.xy * vec2(0.5, -0.5) + vec2(0.5),
@@ -217,8 +217,8 @@ fn irradiance_spherical_harmonics(n: vec3f) -> vec3f {
 }
 
 fn ibl(diffuse_color: vec3f, roughness: f32, ao: f32, f0: vec3f, position: vec3f, normal: vec3f, cNdotV: f32, color: ptr<function, vec3f>) {
-	let viewWS = position - data.cameraPos;
-	let normalWS = (data.invViewMatrix * vec4(normal, 0.0)).xyz;
+	let viewWS = position - global.cameraPos;
+	let normalWS = (global.invViewMatrix * vec4(normal, 0.0)).xyz;
 	let r = get_reflected_vector(roughness, viewWS, normalWS) * vec3(-1.0, -1.0, -1.0);
 	let roughness_lod = sqrt(roughness) * MAX_ROUGHNESS_LOD;
 
@@ -236,8 +236,8 @@ fn ibl(diffuse_color: vec3f, roughness: f32, ao: f32, f0: vec3f, position: vec3f
 }
 
 fn directional_light(albedo: vec3f, roughness: f32, ao: f32, position: vec3f, normal: vec3f, shadowPos: vec3f) -> vec3f {
-	let positionVS = (data.viewMatrix * vec4(position, 1.0)).xyz;
-	let lightVS = (data.viewMatrix * vec4(light.positionWS, 0.0)).xyz;
+	let positionVS = (global.viewMatrix * vec4(position, 1.0)).xyz;
+	let lightVS = (global.viewMatrix * vec4(light.positionWS, 0.0)).xyz;
 	let f0 = F0(material.metallic, material.specular, albedo);
 	let diffuse_color = compute_diffuse_color(albedo, material.metallic);
 
@@ -259,8 +259,8 @@ fn directional_light(albedo: vec3f, roughness: f32, ao: f32, position: vec3f, no
 }
 
 fn point_light(albedo: vec3f, roughness: f32, ao: f32, position: vec3f, normal: vec3f, shadowPos: vec3f) -> vec3f {
-	let positionVS = (data.viewMatrix * vec4(position, 1.0)).xyz;
-	let lightVS = (data.viewMatrix * vec4(light.positionWS, 1.0)).xyz;
+	let positionVS = (global.viewMatrix * vec4(position, 1.0)).xyz;
+	let lightVS = (global.viewMatrix * vec4(light.positionWS, 1.0)).xyz;
     let lightVec = normalize(lightVS - positionVS);
 
     let dist = length(lightVec);

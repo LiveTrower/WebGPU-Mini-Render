@@ -1,4 +1,4 @@
-import { Camera } from "./camera";
+import { Camera3D } from "../control/camera3d";
 import { vec3 } from "gl-matrix";
 import { object_types, RenderData } from "./definitions";
 import { Statue } from "./statue";
@@ -7,18 +7,18 @@ export class Scene {
     statues: Statue[];
     suzanne: Statue;
     plane: Statue;
-    player: Camera;
+    player: Camera3D;
     object_data: Float32Array;
 
-    constructor() {
+    constructor(canvas: HTMLCanvasElement) {
         this.statues = [];
         this.object_data = new Float32Array(16 * 1024);
 
         this.add_statue(new Statue("Suzanne", [0, 0, 1], [0, 0, 0], false));
         this.add_statue(new Statue("Plane", [0, 0, 0], [0, 0, 0], false));
 
-        this.player = new Camera(
-            [-3, 0, 1.0], 0, 0
+        this.player = new Camera3D(
+            [-3, 0, 1.0], 0, 0, canvas.height, canvas.width
         );
 
     }
@@ -45,7 +45,7 @@ export class Scene {
         this.player.update();
     }
 
-    get_player(): Camera {
+    get_player(): Camera3D {
         return this.player;
     }
 
