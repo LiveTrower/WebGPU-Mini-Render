@@ -15,10 +15,6 @@
   ],
   "author": "",
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/amengede/webgpu-for-beginners.git"
-  },
   "dependencies": {
     "@types/node": "^25.0.9",
     "@webgpu/types": "^0.1.69",
