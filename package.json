@@ -1,0 +1,39 @@
+{
+  "name": "webgpu-realtime-renderer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run install-missing-dependencies && npm run build && npm run serve",
+    "install-missing-dependencies": "npm i",
+    "build": "webpack --config webpack.config.js",
+    "serve": "live-server --cors"
+  },
+  "keywords": [
+    "WebGPU",
+    "3D"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^25.0.9",
+    "@webgpu/types": "^0.1.69",
+    "gl-matrix": "^3.4.4",
+    "jquery": "^3.7.1",
+    "live-server": "^1.2.2",
+    "node": "*",
+    "ts-loader": "^9.5.4",
+    "ts-shader-loader": "^2.1.0",
+    "typescript": "^5.9.3",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.33"
+  },
+  "overrides": {
+    "braces": "^3.0.3",
+    "micromatch": "^4.0.8",
+    "ms": "^2.1.3"
+  }
+}
