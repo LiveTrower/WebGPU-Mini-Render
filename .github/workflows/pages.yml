@@ -1,6 +1,9 @@
 name: Setup Node.js environment
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -20,9 +23,15 @@ jobs:
 
       - name: Build project
         run: npm run build
+      
+      - name: Remove gitignore before deploy
+        run: |
+          rm -f .gitignore
+          rm -rf node_modules
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist
+          folder: .
           branch: gh-pages
+          clean: true
