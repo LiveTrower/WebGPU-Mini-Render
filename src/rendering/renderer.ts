@@ -137,8 +137,8 @@ export class Renderer {
     async createAssets() {
         this.statueMesh = new ObjMesh();
         this.planeMesh = new ObjMesh();
-        await this.statueMesh.initialize(this.device, "dist/models/Suzanne.obj");
-        await this.planeMesh.initialize(this.device, "dist/models/Plane.obj");
+        await this.statueMesh.initialize(this.device, "src/assets/models/Suzanne.obj");
+        await this.planeMesh.initialize(this.device, "src/assets/models/Plane.obj");
         this.material3D = new Material3D(this.device);  
         this.woodAlbedoTexture = new Texture();
         this.woodORMTexture = new Texture();

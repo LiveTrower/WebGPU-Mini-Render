@@ -30,7 +30,7 @@ export class CubeMapTexture {
 
         for (var faceIndex = 0; faceIndex < 6; faceIndex += 1) {
             for (var mipLevel = 0; mipLevel < mipCount; mipLevel += 1) {
-                const filename: string = "dist/img/" + dir + String(mipLevel) + "_" + faceNames[faceIndex] + ".png"
+                const filename: string = "src/assets/" + dir + String(mipLevel) + "_" + faceNames[faceIndex] + ".png"
                 const response: Response = await fetch(filename);
                 const blob: Blob = await response.blob();
                 const imageData: ImageBitmap = await createImageBitmap(blob);

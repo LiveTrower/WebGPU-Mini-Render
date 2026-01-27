@@ -17,7 +17,7 @@ export class Texture {
         this.texture = device.createTexture(textureDescriptor);
 
         for (var i = 0; i < mipCount; i += 1) {
-            const filename: string = "dist/img/" + name + String(i) + ".png";
+            const filename: string = "src/assets/" + name + String(i) + ".png";
             const response: Response = await fetch(filename);
             const blob: Blob = await response.blob();
             const imageData: ImageBitmap = await createImageBitmap(blob);
