@@ -91,11 +91,10 @@ fn tonemap_aces(color: vec3f) -> vec3f {
 @fragment
 fn fs_main(vsOut: VSOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = textureSample(colorTexture, colorSampler, vsOut.TexCoord);
-	//var finalColor = do_fxaa(color.rgb, vsOut.TexCoord);
 	var finalColor = linear_to_srgb(tonemap_aces(color.rgb));
 
 	// Debanding should be done at the end of tonemapping, but before writing to the LDR buffer.
 	// Otherwise, we're adding noise to an already-quantized image.
     finalColor += screen_space_dither(vsOut.Position.xy, 255.0);
-    return vec4<f32>(finalColor, color.a);
+    return vec4f(finalColor, color.a);
 }

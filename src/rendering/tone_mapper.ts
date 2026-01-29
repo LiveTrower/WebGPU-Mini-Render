@@ -25,7 +25,6 @@ export class ToneMapper {
         builder.setSourceCode(tonemap, "fs");
         builder.addColorFormat(format);
         builder.setCullMode("front");
-        //builder.setMSAASamples(4);
         this.pipeline = await builder.buildRenderPipeline();
     }
 }

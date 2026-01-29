@@ -12,6 +12,7 @@ import { RenderPipelineBuilder } from "./pipeline";
 import { ToneMapper } from "./tone_mapper";
 import { Sky } from "./sky";
 import { ShadowMap } from "./shadow_map";
+import { FXAA } from "./fxaa";
 import { FrameBuffers } from "../resources/framebuffers";
 
 export class Renderer {
@@ -38,6 +39,7 @@ export class Renderer {
     shadowMap: ShadowMap;
     sky: Sky;
     toneMapper: ToneMapper;
+    fxaa: FXAA;
     statueMesh: ObjMesh;
     planeMesh: ObjMesh;
     material3D: Material3D;
@@ -54,6 +56,7 @@ export class Renderer {
         this.shadowMap = new ShadowMap();
         this.sky = new Sky();
         this.toneMapper = new ToneMapper();
+        this.fxaa = new FXAA();
         this.framebuffers = new FrameBuffers();
     }
 
@@ -89,9 +92,10 @@ export class Renderer {
     }
 
     async setupFrameBuffers() {
-        this.framebuffers.setupColorBuffer(this.device, this.canvas);
-        this.framebuffers.setupDepthBuffer(this.device, this.canvas);
-        this.framebuffers.setupMSAABuffer(this.device, this.canvas, this.context);
+        this.framebuffers.setCanvas(this.canvas.height, this.canvas.width, navigator.gpu.getPreferredCanvasFormat());
+        this.framebuffers.setupColorBuffer(this.device);
+        this.framebuffers.setupDepthBuffer(this.device);
+        this.framebuffers.setupTonemapBuffer(this.device);
     }
 
     async makeBindGroupLayouts() {
@@ -114,6 +118,7 @@ export class Renderer {
         this.materialGroupLayout = await builder.build();
 
         await this.toneMapper.makeBindGroupsLayout(builder);
+        await this.fxaa.makeBindGroupsLayout(builder);
     }
 
     async makePipelines() {
@@ -131,7 +136,8 @@ export class Renderer {
         builder.setCullMode("back");
         this.lightPipeline = await builder.buildRenderPipeline();
         
-        await this.toneMapper.makePipeline(builder, this.framebuffers.canvasFormat);
+        await this.toneMapper.makePipeline(builder, this.framebuffers.colorFormat);
+        await this.fxaa.makePipeline(builder, this.framebuffers.canvasFormat);
     }
 
     async createAssets() {
@@ -163,6 +169,8 @@ export class Renderer {
         await this.woodAlbedoTexture.createTexture(this.device, "Planks/PlanksAlbedo", 1024, 1024, 11);
         await this.woodORMTexture.createTexture(this.device, "Planks/PlanksORM", 1024, 1024, 11);
         await this.woodNormalTexture.createTexture(this.device, "Planks/PlanksNormal", 1024, 1024, 11);
+
+        await this.fxaa.initialize(this.device);
     }
 
     async makeBindGroups() {
@@ -187,6 +195,7 @@ export class Renderer {
         this.materialBindGroup = await builder.build();
 
         await this.toneMapper.makeBindGroups(builder, this.framebuffers.colorBuffer);
+        await this.fxaa.makeBindGroups(builder, this.framebuffers.tonemapBuffer);
     }
 
     setupMatrices(renderables: RenderData, camera: Camera3D) {
@@ -226,7 +235,7 @@ export class Renderer {
     }
 
     prepareScene(renderables: RenderData, camera: Camera3D) {
-        this.sky.writeBuffer(this.device, camera, this.canvas.height, this.canvas.width);
+        this.sky.writeBuffer(this.device, camera, this.framebuffers.canvasHeight, this.framebuffers.canvasWidth);
 
         this.device.queue.writeBuffer(
             this.objectBuffer, 0, 
@@ -261,7 +270,6 @@ export class Renderer {
     drawScene(renderables: RenderData, camera: Camera3D, commandEncoder: GPUCommandEncoder) {
         this.prepareScene(renderables, camera);
 
-        //renderpass: holds draw commands, allocated from command encoder
         const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 view: this.framebuffers.colorBuffer.view,
@@ -300,22 +308,9 @@ export class Renderer {
     }
 
     async applyToneMapping(commandEncoder: GPUCommandEncoder) {
-        //texture view: image view to the color buffer in this case
-        const textureView : GPUTextureView = this.context.getCurrentTexture().createView();
-        //renderpass: holds draw commands, allocated from command encoder
-        /*const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
-            colorAttachments: [{
-                view: this.framebuffers.colorMSAABuffer.view,
-                resolveTarget: textureView,
-                clearValue: [0, 0, 0, 0],
-                loadOp: "clear",
-                storeOp: "discard"
-            }]
-        });*/
-
         const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
-                view: textureView,
+                view: this.framebuffers.tonemapBuffer.view,
                 loadOp: "clear",
                 storeOp: "store"
             }]
@@ -323,6 +318,26 @@ export class Renderer {
 
         renderpass.setPipeline(this.toneMapper.pipeline);
         renderpass.setBindGroup(0, this.toneMapper.bindGroup);
+        renderpass.draw(3, 1, 0, 0);
+
+        renderpass.end();
+    }
+
+    async applyFXAA(commandEncoder: GPUCommandEncoder) {
+        this.fxaa.writeBuffer(this.device, this.framebuffers.canvasHeight, this.framebuffers.canvasWidth);
+
+        //texture view: image view to the color buffer in this case
+        const textureView : GPUTextureView = this.context.getCurrentTexture().createView();
+        const renderpass : GPURenderPassEncoder = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: "load",
+                storeOp: "store"
+            }]
+        });
+
+        renderpass.setPipeline(this.fxaa.pipeline);
+        renderpass.setBindGroup(0, this.fxaa.bindGroup);
         renderpass.draw(3, 1, 0, 0);
 
         renderpass.end();
@@ -346,6 +361,8 @@ export class Renderer {
         this.drawScene(renderables, camera, commandEncoder);
 
         this.applyToneMapping(commandEncoder);
+
+        this.applyFXAA(commandEncoder);
     
         this.device.queue.submit([commandEncoder.finish()]);
     }

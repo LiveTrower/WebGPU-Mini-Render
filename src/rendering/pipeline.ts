@@ -9,7 +9,6 @@ export class RenderPipelineBuilder {
     colorTargetStates: GPUColorTargetState[];
     depthStencilState: GPUDepthStencilState | undefined;
     cullMode: GPUCullMode;
-    msaa_samples: number;
 
     constructor(device: GPUDevice) {
         this.bindGroupLayouts = [];
@@ -29,7 +28,6 @@ export class RenderPipelineBuilder {
         this.compute_entry = "";
         this.colorTargetStates = [];
         this.depthStencilState = undefined;
-        this.msaa_samples = 0;
     }
 
     async addBindGroupLayout(layout: GPUBindGroupLayout) {
@@ -68,10 +66,6 @@ export class RenderPipelineBuilder {
         this.cullMode = cullMode;
     }
 
-    setMSAASamples(samples: number) {
-        this.msaa_samples = samples;
-    }
-
     async buildRenderPipeline(): Promise<GPURenderPipeline> {
         const layout = this.device.createPipelineLayout({
             bindGroupLayouts: this.bindGroupLayouts
@@ -102,12 +96,6 @@ export class RenderPipelineBuilder {
                 }),
                 entryPoint : this.fragment_entry,
                 targets : this.colorTargetStates
-            };
-        }
-
-        if (this.msaa_samples > 0) {
-            pipelineDescriptor.multisample = {
-                count: this.msaa_samples
             };
         }
 
