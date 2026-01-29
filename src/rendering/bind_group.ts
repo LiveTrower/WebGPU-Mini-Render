@@ -42,6 +42,14 @@ export class BindGroupBuilder {
         this.binding += 1;
     }
 
+    addStorageTexture(view: GPUTextureView) {
+        this.entries.push({
+            binding: this.binding,
+            resource: view
+        });
+        this.binding += 1;
+    }
+
     async build(): Promise<GPUBindGroup> {
 
         const bindGroup = await this.device.createBindGroup({

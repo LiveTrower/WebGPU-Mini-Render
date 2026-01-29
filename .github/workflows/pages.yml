@@ -24,7 +24,7 @@ jobs:
       - name: Build project
         run: npm run build
       
-      - name: Remove gitignore before deploy
+      - name: Clean up for deploy
         run: |
           rm -f .gitignore
           rm -rf node_modules

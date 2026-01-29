@@ -66,6 +66,19 @@ export class BindGroupLayoutBuilder {
         this.binding += 1;
     }
 
+    addStorageTexture(visibility: number, type: GPUTextureViewDimension) {
+        this.bindGroupLayoutEntries.push({
+            binding: this.binding,
+            visibility: visibility,
+            storageTexture: {
+                access: "write-only",
+                format: "rgba8unorm",
+                viewDimension: type,
+            }
+        });
+        this.binding += 1;
+    }
+
     async build(): Promise<GPUBindGroupLayout> {
         const layout: GPUBindGroupLayout = await this.device.createBindGroupLayout({entries: this.bindGroupLayoutEntries});
         this.reset();

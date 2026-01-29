@@ -62,11 +62,38 @@
 //
 //----------------------------------------------------------------------------------
 
-struct TonemapData {
+struct FxaaUniforms {
     pixel_size: vec2f
 };
 
-@binding(0) @group(0) var<uniform> data: TonemapData;
+@binding(0) @group(0) var<uniform> data: FxaaUniforms;
+@binding(1) @group(0) var colorTexture: texture_2d<f32>;
+@binding(2) @group(0) var colorSampler: sampler;
+
+struct VSOutput {
+    @builtin(position) Position: vec4f,
+    @location(0) TexCoord: vec2f
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) VertexIndex: u32) -> VSOutput {
+
+	var vertex_base = vec2f(0.0);
+	if (VertexIndex == 0) {
+		vertex_base = vec2(-1.0, -1.0);
+	} else if (VertexIndex == 1) {
+		vertex_base = vec2(-1.0, 3.0);
+	} else {
+		vertex_base = vec2(3.0, -1.0);
+	}
+
+    var output : VSOutput;
+
+    output.Position = vec4(vertex_base, 0.0, 1.0);
+    output.TexCoord = saturate(vertex_base * vec2(1.0, -1.0)) * 2.0;
+
+    return output;
+}
 
 fn QUALITY(q: f32) -> f32 {
 	if (q < 5) {
@@ -262,4 +289,12 @@ fn do_fxaa(color: vec3f, uv_interp: vec2f) -> vec3f {
 
 	let finalColor = textureSampleLevel(colorTexture, colorSampler, finalUv, 0.0).xyz;
 	return finalColor;
+}
+
+@fragment
+fn fs_main(vsOut: VSOutput) -> @location(0) vec4<f32> {
+	let color = textureSampleLevel(colorTexture, colorSampler, vsOut.TexCoord, 0.0);
+	let fxaa = do_fxaa(color.rgb, vsOut.TexCoord);
+
+	return vec4f(fxaa, color.a);
 }
