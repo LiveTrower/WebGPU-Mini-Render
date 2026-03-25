@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "npm run install-missing-dependencies && npm run build && npm run serve",
-    "install-missing-dependencies": "npm i",
+    "install-missing-dependencies": "npm i --ignore-scripts",
     "build": "webpack --config webpack.config.js",
     "serve": "live-server --cors"
   },
