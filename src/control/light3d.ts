@@ -1,13 +1,14 @@
-import { vec3, mat4 } from "gl-matrix";
+import { Vec3, Mat4, vec3, mat4 } from "wgpu-matrix";
 
 export class Light3D {
-    color: vec3;
+    color: Vec3;
     energy: number;
-    position: vec3;
+    position: Vec3;
     shadowEnabled: boolean;
-    lightViewMatrix: mat4;
-    lightProjectionMatrix: mat4;
-    lightViewProjectionMatrix: mat4;
+    lightViewMatrix: Mat4;
+    lightProjectionMatrix: Mat4;
+    lightReverseProjectionMatrix: Mat4;
+    lightViewProjectionMatrix: Mat4;
 
     lightBuffer: GPUBuffer;
 
@@ -20,24 +21,20 @@ export class Light3D {
     private shadowCheckbox: HTMLInputElement | null;
 
     constructor(device: GPUDevice) {
-        this.color = vec3.fromValues(1.0, 1.0, 1.0);
+        this.color = vec3.create(1.0, 1.0, 1.0);
         this.energy = 2.0;
-        this.position = vec3.fromValues(-50, -100, 100);
+        this.position = vec3.create(-50, -100, 100);
         this.shadowEnabled = true;
-        const upVector = vec3.fromValues(0, 0, 1);
-        const origin = vec3.fromValues(0, 0, 0);
-        this.lightViewMatrix = mat4.create();
-        mat4.lookAt(this.lightViewMatrix, this.position, origin, upVector);
-        this.lightProjectionMatrix = mat4.create(); 
-        const left = -5;
-        const right = 5;
-        const bottom = -5;
-        const top = 5;
-        const near = -200;
-        const far = 300;
-        mat4.ortho(this.lightProjectionMatrix, left, right, bottom, top, near, far);
-        this.lightViewProjectionMatrix = mat4.create();
-        mat4.multiply(this.lightViewProjectionMatrix, this.lightProjectionMatrix, this.lightViewMatrix);
+        const upVector = vec3.create(0, 0, 1);
+        const origin = vec3.create(0, 0, 0);
+        this.lightViewMatrix = mat4.lookAt(this.position, origin, upVector);
+        this.lightProjectionMatrix = mat4.ortho(-5, 5, -5, 5, -200, 300);
+        const depthRangeRemapMatrix = mat4.identity();
+
+        depthRangeRemapMatrix[10] = -1;
+        depthRangeRemapMatrix[14] = 1;
+        this.lightReverseProjectionMatrix = mat4.multiply(depthRangeRemapMatrix, this.lightProjectionMatrix);
+        this.lightViewProjectionMatrix = mat4.multiply(this.lightReverseProjectionMatrix, this.lightViewMatrix);
 
         this.lightBuffer = device.createBuffer({
             label: "light_buffer",
@@ -70,7 +67,7 @@ export class Light3D {
             const y = this.posYInput ? parseFloat(this.posYInput.value) : this.position[1];
             const z = this.posZInput ? parseFloat(this.posZInput.value) : this.position[2];
 
-            this.position = vec3.fromValues(isNaN(x) ? this.position[0] : x,
+            this.position = vec3.create(isNaN(x) ? this.position[0] : x,
                                             isNaN(y) ? this.position[1] : y,
                                             isNaN(z) ? this.position[2] : z);
 
@@ -89,10 +86,10 @@ export class Light3D {
     }
 
     private updateLightMatrices(): void {
-        const upVector = vec3.fromValues(0, 0, 1);
-        const origin = vec3.fromValues(0, 0, 0);
-        mat4.lookAt(this.lightViewMatrix, this.position, origin, upVector);
-        mat4.multiply(this.lightViewProjectionMatrix, this.lightProjectionMatrix, this.lightViewMatrix);
+        const upVector = vec3.create(0, 0, 1);
+        const origin = vec3.create(0, 0, 0);
+        this.lightViewMatrix = mat4.lookAt(this.position, origin, upVector);
+        this.lightViewProjectionMatrix = mat4.multiply(this.lightReverseProjectionMatrix, this.lightViewMatrix);
     }
 
     private setupSliderListeners(): void {
@@ -117,7 +114,7 @@ export class Light3D {
                 const g = parseInt(hexColor.substr(3, 2), 16) / 255.0;
                 const b = parseInt(hexColor.substr(5, 2), 16) / 255.0;
                 
-                this.color = vec3.fromValues(r, g, b);
+                this.color = vec3.create(r, g, b);
             });
         }
     }

@@ -64,7 +64,7 @@ export class FrameBuffers {
         this.depthStencilState = {
             format: this.depthFormat,
             depthWriteEnabled: true,
-            depthCompare: "less-equal",
+            depthCompare: "greater-equal",
         };
 
         const size: GPUExtent3D = {
@@ -88,7 +88,7 @@ export class FrameBuffers {
         
         this.depthStencilAttachment = {
             view: this.depthBuffer.view,
-            depthClearValue: 1.0,
+            depthClearValue: 0,
             depthLoadOp: "clear",
             depthStoreOp: "store",
             stencilClearValue: 0,

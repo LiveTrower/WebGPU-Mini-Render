@@ -1,13 +1,13 @@
-import { vec3, mat4 } from "gl-matrix";
+import { Mat4, Vec3, vec3, mat4 } from "wgpu-matrix";
 import { Deg2Rad } from "./common_math";
 
 export class Triangle {
 
-    position: vec3;
-    eulers: vec3;
-    model!: mat4;
+    position: Vec3;
+    eulers: Vec3;
+    model!: Mat4;
 
-    constructor(position: vec3, theta: number) {
+    constructor(position: Vec3, theta: number) {
         this.position = position;
         this.eulers = vec3.create();
         this.eulers[2] = theta;
@@ -17,12 +17,11 @@ export class Triangle {
         this.eulers[2] += 1;
         this.eulers[2] %= 360;
 
-        this.model = mat4.create();
-        mat4.translate(this.model, this.model, this.position);
-        mat4.rotateZ(this.model, this.model, Deg2Rad(this.eulers[2]));
+        this.model = mat4.translate(mat4.identity(), this.position);
+        this.model = mat4.rotateZ(this.model, Deg2Rad(this.eulers[2]));
     }
 
-    get_model(): mat4 {
+    get_model(): Mat4 {
         return this.model;
     }
 }

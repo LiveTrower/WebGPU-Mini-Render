@@ -1,22 +1,23 @@
-import { vec3, mat4 } from "gl-matrix";
+import { Mat4, Vec3, vec3, mat4 } from "wgpu-matrix";
 import { Deg2Rad } from "../model/common_math";
 
 export class Camera3D {
 
-    position: vec3;
-    eulers: vec3;
-    view!: mat4;
-    forwards: vec3;
-    right: vec3;
-    up: vec3;
+    position: Vec3;
+    eulers: Vec3;
+    view!: Mat4;
+    forwards: Vec3;
+    right: Vec3;
+    up: Vec3;
     fov: number;
     near: number;
     far: number;
     height: number;
     width: number;
-    projectionMatrix: mat4;
-    invViewMatrix: mat4;
-    viewProjectionMatrix: mat4;
+    projectionMatrix: Mat4;
+    reverseProjectionMatrix: Mat4;
+    invViewMatrix: Mat4;
+    viewProjectionMatrix: Mat4;
 
     private fovSlider: HTMLInputElement | null;
     private fovValue: HTMLElement | null;
@@ -25,9 +26,9 @@ export class Camera3D {
     private farSlider: HTMLInputElement | null;
     private farValue: HTMLElement | null;
 
-    constructor(position: vec3, theta: number, phi: number, height: number, width: number) {
+    constructor(position: Vec3, theta: number, phi: number, height: number, width: number) {
         this.position = position;
-        this.eulers = [0, phi, theta];
+        this.eulers = vec3.create(0, phi, theta);
         this.forwards = vec3.create();
         this.right = vec3.create();
         this.up = vec3.create();
@@ -38,8 +39,12 @@ export class Camera3D {
         this.height = height;
         this.width = width;
 
-        this.projectionMatrix = mat4.create();
-        mat4.perspective(this.projectionMatrix, Deg2Rad(this.fov), width/height, this.near, this.far);
+        this.projectionMatrix = mat4.perspective(Deg2Rad(this.fov), width/height, this.near, this.far);
+
+        const depthRangeRemapMatrix = mat4.identity();
+        depthRangeRemapMatrix[10] = -1;
+        depthRangeRemapMatrix[14] = 1;
+        this.reverseProjectionMatrix = mat4.multiply(depthRangeRemapMatrix, this.projectionMatrix);
 
         this.fovSlider = document.getElementById('camera-fov') as HTMLInputElement;
         this.fovValue = document.getElementById('camera-fov-value');
@@ -85,27 +90,28 @@ export class Camera3D {
 
     update() {
 
-        this.forwards = [
-            Math.cos(Deg2Rad(this.eulers[2])) * Math.cos(Deg2Rad(this.eulers[1])),
-            Math.sin(Deg2Rad(this.eulers[2])) * Math.cos(Deg2Rad(this.eulers[1])),
-            Math.sin(Deg2Rad(this.eulers[1]))
-        ];
+        this.forwards = vec3.create(0, 0, 0);
+        this.forwards[0] = Math.cos(Deg2Rad(this.eulers[2])) * Math.cos(Deg2Rad(this.eulers[1]));
+        this.forwards[1] = Math.sin(Deg2Rad(this.eulers[2])) * Math.cos(Deg2Rad(this.eulers[1]));
+        this.forwards[2] = Math.sin(Deg2Rad(this.eulers[1]));
 
-        vec3.cross(this.right, this.forwards, [0,0,1]);
+        this.right = vec3.cross(this.forwards, [0,0,1]);
 
-        vec3.cross(this.up, this.right, this.forwards);
+        this.up = vec3.cross(this.right, this.forwards);
 
-        var target: vec3 = vec3.create();
-        vec3.add(target, this.position, this.forwards);
+        var target: Vec3 = vec3.add(this.position, this.forwards);
 
-        this.view = mat4.create();
-        mat4.lookAt(this.view, this.position, target, this.up);
+        this.view = mat4.lookAt(this.position, target, this.up);
 
-        this.projectionMatrix = mat4.create();
-        mat4.perspective(this.projectionMatrix, Deg2Rad(this.fov), this.width/this.height, this.near, this.far);
+        this.projectionMatrix = mat4.perspective(Deg2Rad(this.fov), this.width/this.height, this.near, this.far);
+
+        const depthRangeRemapMatrix = mat4.identity();
+        depthRangeRemapMatrix[10] = -1;
+        depthRangeRemapMatrix[14] = 1;
+        this.reverseProjectionMatrix = mat4.multiply(depthRangeRemapMatrix, this.projectionMatrix);
     }
 
-    get_view(): mat4 {
+    get_view(): Mat4 {
         return this.view;
     }
 }

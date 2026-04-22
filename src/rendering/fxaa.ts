@@ -1,5 +1,5 @@
 import fxaa from "./shaders/fxaa.wgsl";
-import { vec2 } from "gl-matrix";
+import { vec2 } from "wgpu-matrix";
 import { Texture } from "../resources/texture";
 import { RenderPipelineBuilder } from "./pipeline";
 import { BindGroupLayoutBuilder } from "./bind_group_layout";
@@ -43,7 +43,7 @@ export class FXAA {
 
     writeBuffer(device: GPUDevice, height: number, width: number) {
         const data = new Float32Array(2);
-        data.set(vec2.fromValues(1.0 / width, 1.0 /height), 0);
+        data.set(vec2.create(1.0 / width, 1.0 /height), 0);
         device.queue.writeBuffer(this.buffer, 0, data);
     }
 }

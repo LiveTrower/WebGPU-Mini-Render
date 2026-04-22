@@ -1,5 +1,5 @@
 import light_shader from "./shaders/lighting.wgsl";
-import { mat4, vec3 } from "gl-matrix";
+import { Mat4, mat4, vec2 } from "wgpu-matrix";
 import { Texture } from "../resources/texture";
 import { RenderData } from "../model/definitions";
 import { ObjMesh } from "../resources/obj_mesh";
@@ -23,9 +23,9 @@ export class Renderer {
     device: GPUDevice;
     context: GPUCanvasContext;
 
-    viewMatrix: mat4;
-    invViewMatrix: mat4;
-    viewProjectionMatrix: mat4;
+    viewMatrix: Mat4;
+    invViewMatrix: Mat4;
+    viewProjectionMatrix: Mat4;
 
     // Pipeline objects
     dataBuffer: GPUBuffer;
@@ -151,7 +151,7 @@ export class Renderer {
         this.woodNormalTexture = new Texture();
         this.light = new Light3D(this.device);
 
-        await this.shadowMap.initialize(this.device, [1024, 1024]);
+        await this.shadowMap.initialize(this.device, vec2.create(1024, 1024));
         await this.sky.initialize(this.device);
 
         this.objectBuffer = this.device.createBuffer({
@@ -202,14 +202,9 @@ export class Renderer {
         //make transforms
         this.viewMatrix = renderables.view_transform;
 
-        this.invViewMatrix = mat4.create();
-        mat4.invert(this.invViewMatrix, this.viewMatrix);
+        this.invViewMatrix = mat4.invert(this.viewMatrix);
 
-        this.viewProjectionMatrix = mat4.create();
-        mat4.multiply(this.viewProjectionMatrix, camera.projectionMatrix, this.viewMatrix);
-
-        const modelMatrix = mat4.create();
-        mat4.fromScaling(modelMatrix, vec3.fromValues(1000, 1000, 1000));
+        this.viewProjectionMatrix = mat4.multiply(camera.reverseProjectionMatrix, this.viewMatrix);
     }
 
     drawShadowMaps(commandEncoder: GPUCommandEncoder) {
@@ -219,7 +214,7 @@ export class Renderer {
             colorAttachments: [],
             depthStencilAttachment: {
                 view: this.shadowMap.texture.view,
-                depthClearValue: 1.0,
+                depthClearValue: 0,
                 depthLoadOp: "clear",
                 depthStoreOp: "store"
             }
@@ -246,7 +241,7 @@ export class Renderer {
         const sceneData = new Float32Array(83);
         sceneData.set(this.viewMatrix, 0);
         sceneData.set(this.invViewMatrix, 16);
-        sceneData.set(camera.projectionMatrix, 32);
+        sceneData.set(camera.reverseProjectionMatrix, 32);
         sceneData.set(this.viewProjectionMatrix, 48);
         sceneData.set(this.light.lightViewProjectionMatrix, 64);
         sceneData.set(camera.position, 80);
