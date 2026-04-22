@@ -1,22 +1,21 @@
-import { vec3, mat4 } from "gl-matrix";
+import { Mat4, Vec3, mat4 } from "wgpu-matrix";
 
 export class Quad {
 
-    position!: vec3;
-    model!: mat4;
+    position!: Vec3;
+    model!: Mat4;
 
-    constructor(position: vec3) {
+    constructor(position: Vec3) {
         this.position = position;
     }
 
     update() {
 
-        this.model = mat4.create();
-        mat4.translate(this.model, this.model, this.position);
+        this.model = mat4.translate(mat4.identity(), this.position);
         
     }
 
-    get_model(): mat4 {
+    get_model(): Mat4 {
         return this.model;
     }
 }

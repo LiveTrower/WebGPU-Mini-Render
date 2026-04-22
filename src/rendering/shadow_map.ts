@@ -1,21 +1,21 @@
 import shadow_map_shader from "./shaders/shadow_map.wgsl";
-import { vec2, mat4 } from "gl-matrix";
+import { Vec2, Mat4 } from "wgpu-matrix";
 import { Texture } from "../resources/texture";
 import { RenderPipelineBuilder } from "./pipeline";
 import { BindGroupLayoutBuilder } from "./bind_group_layout";
 import { BindGroupBuilder } from "./bind_group";
 
 export class ShadowMap {
-    public readonly FORMAT: GPUTextureFormat = "depth32float";
+    public readonly FORMAT: GPUTextureFormat = "depth16unorm";
 
     texture: Texture;
     buffer: GPUBuffer;
     pipeline: GPURenderPipeline;
     bindGroupLayout: GPUBindGroupLayout;
     bindGroup: GPUBindGroup;
-    resolution: vec2;
+    resolution: Vec2;
 
-    async initialize(device: GPUDevice, resolution: vec2) {
+    async initialize(device: GPUDevice, resolution: Vec2) {
         this.resolution = resolution;
         
         this.texture = new Texture();
@@ -50,14 +50,14 @@ export class ShadowMap {
         const depthStencil: GPUDepthStencilState = {
             format: this.FORMAT,
             depthWriteEnabled: true,
-            depthCompare: "less",
+            depthCompare: "greater",
         };
         builder.setDepthStencilState(depthStencil);
         builder.setCullMode("back");
         this.pipeline = await builder.buildRenderPipeline();
     }
 
-    writeBuffer(device: GPUDevice, lightProjection: mat4) {
+    writeBuffer(device: GPUDevice, lightProjection: Mat4) {
         device.queue.writeBuffer(this.buffer, 0, new Float32Array(lightProjection));
     }
 }

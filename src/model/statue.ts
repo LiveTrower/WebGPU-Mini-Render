@@ -1,15 +1,15 @@
-import { vec3, mat4 } from "gl-matrix";
+import { Mat4, Vec3, mat4 } from "wgpu-matrix";
 import { Deg2Rad } from "./common_math";
 
 export class Statue {
 
     name: String;
-    position: vec3;
-    eulers: vec3;
-    model!: mat4;
+    position: Vec3;
+    eulers: Vec3;
+    model!: Mat4;
     animation: boolean;
 
-    constructor(name: String, position: vec3, eulers: vec3, animation: boolean) {
+    constructor(name: String, position: Vec3, eulers: Vec3, animation: boolean) {
         this.name = name;
         this.position = position;
         this.eulers = eulers;
@@ -17,18 +17,17 @@ export class Statue {
     }
 
     update() {
-        this.model = mat4.create();
-        mat4.translate(this.model, this.model, this.position);
+        this.model = mat4.translate(mat4.identity(), this.position);
 
         if (this.animation) {
             this.eulers[2] += 1;
             this.eulers[2] %= 360;
-            mat4.rotateY(this.model, this.model, Deg2Rad(this.eulers[1]));
-            mat4.rotateZ(this.model, this.model, Deg2Rad(this.eulers[2]));
+            this.model = mat4.rotateY(this.model, Deg2Rad(this.eulers[1]));
+            this.model = mat4.rotateZ(this.model, Deg2Rad(this.eulers[2]));
         }
     }
 
-    get_model(): mat4 {
+    get_model(): Mat4 {
         return this.model;
     }
 }

@@ -58,7 +58,7 @@ export class Texture {
         };
 
         const samplerDescriptor: GPUSamplerDescriptor = {
-            compare: "less"
+            compare: "greater"
         };
 
         this.texture = device.createTexture(textureDescriptor);

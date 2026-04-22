@@ -1,4 +1,4 @@
-import { mat4 } from "gl-matrix";
+import { Mat4 } from "wgpu-matrix";
 
 export enum object_types {
     TRIANGLE,
@@ -6,14 +6,14 @@ export enum object_types {
 }
 
 export interface RenderData {
-    view_transform: mat4;
+    view_transform: Mat4;
     model_transforms: Float32Array;
     object_counts: {[obj in object_types]: number}
 }
 
 export interface SceneData {
-    projectionMatrix: mat4;
-    viewMatrix: mat4;
-    viewProjectionMatrix: mat4;
-    modelViewProjectionMatrix: mat4;
+    projectionMatrix: Mat4;
+    viewMatrix: Mat4;
+    viewProjectionMatrix: Mat4;
+    modelViewProjectionMatrix: Mat4;
 }

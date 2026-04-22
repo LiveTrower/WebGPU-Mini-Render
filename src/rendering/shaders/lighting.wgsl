@@ -164,7 +164,7 @@ fn shadows(shadowPos: vec3f) -> f32 {
 			
 			visibility += textureSampleCompare(
 				shadowMap, shadowSampler,
-				shadowPos.xy + offset, shadowPos.z - 0.001
+				shadowPos.xy + offset, shadowPos.z + 0.001
 			);
 		}
 	}

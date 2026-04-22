@@ -1,7 +1,7 @@
-import { vec3 } from "gl-matrix";
+import { Vec3, vec3 } from "wgpu-matrix";
 
 export class Material3D {
-    color: vec3
+    color: Vec3
     metallic: number
     specular: number
     roughness: number
@@ -17,7 +17,7 @@ export class Material3D {
     private colorPicker: HTMLInputElement | null;
 
     constructor(device: GPUDevice) {
-        this.color = vec3.fromValues(1.0, 1.0, 1.0);
+        this.color = vec3.create(1.0, 1.0, 1.0);
         this.metallic = 0.0;
         this.specular = 0.5;
         this.roughness = 1.0;
@@ -82,7 +82,7 @@ export class Material3D {
                 const g = parseInt(hexColor.substr(3, 2), 16) / 255.0;
                 const b = parseInt(hexColor.substr(5, 2), 16) / 255.0;
                 
-                this.color = vec3.fromValues(r, g, b);
+                this.color = vec3.create(r, g, b);
             });
         }
     }

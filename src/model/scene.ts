@@ -1,5 +1,5 @@
 import { Camera3D } from "../control/camera3d";
-import { vec3 } from "gl-matrix";
+import { vec3 } from "wgpu-matrix";
 import { object_types, RenderData } from "./definitions";
 import { Statue } from "./statue";
 
@@ -14,11 +14,11 @@ export class Scene {
         this.statues = [];
         this.object_data = new Float32Array(16 * 1024);
 
-        this.add_statue(new Statue("Suzanne", [0, 0, 1], [0, 0, 0], false));
-        this.add_statue(new Statue("Plane", [0, 0, 0], [0, 0, 0], false));
+        this.add_statue(new Statue("Suzanne", vec3.create(0, 0, 1), vec3.create(0, 0, 0), false));
+        this.add_statue(new Statue("Plane", vec3.create(0, 0, 0), vec3.create(0, 0, 0), false));
 
         this.player = new Camera3D(
-            [-3, 0, 1.0], 0, 0, canvas.height, canvas.width
+            vec3.create(-3, 0, 1.0), 0, 0, canvas.height, canvas.width
         );
 
     }
@@ -73,14 +73,7 @@ export class Scene {
     }
 
     move_player(forwards_amount: number, right_amount: number) {
-        vec3.scaleAndAdd(
-            this.player.position, this.player.position, 
-            this.player.forwards, forwards_amount
-        );
-
-        vec3.scaleAndAdd(
-            this.player.position, this.player.position, 
-            this.player.right, right_amount
-        );
+        this.player.position = vec3.addScaled(this.player.position, this.player.forwards, forwards_amount);
+        this.player.position = vec3.addScaled(this.player.position, this.player.right, right_amount);
     }
 }

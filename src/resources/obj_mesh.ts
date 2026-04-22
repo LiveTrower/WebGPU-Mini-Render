@@ -1,12 +1,12 @@
-import { vec3, vec2 } from "gl-matrix";
+import { Vec3, Vec2, vec3, vec2 } from "wgpu-matrix";
 
 export class ObjMesh {
 
     buffer!: GPUBuffer
     bufferLayout!: GPUVertexBufferLayout
-    v: vec3[]
-    vt: vec2[]
-    vn: vec3[]
+    v: Vec3[]
+    vt: Vec2[]
+    vn: Vec3[]
     vertices!: Float32Array
     vertexCount!: number
 
@@ -106,11 +106,11 @@ export class ObjMesh {
 
         const components = line.split(" ");
         // ["v", "x", "y", "z"]
-        const new_vertex: vec3 = [
+        const new_vertex: Vec3 = vec3.create(
             Number(components[1]).valueOf(),
             Number(components[2]).valueOf(),
             Number(components[3]).valueOf()
-        ];
+        );
 
         this.v.push(new_vertex);
     }
@@ -118,10 +118,10 @@ export class ObjMesh {
     read_texcoord_data(line: string) {
         const components = line.split(" ");
         // ["vt", "u", "v"]
-        const new_texcoord: vec2 = [
+        const new_texcoord: Vec2 = vec2.create(
             Number(components[1]).valueOf(),
             Number(components[2]).valueOf()
-        ];
+        );
 
         this.vt.push(new_texcoord);
     }
@@ -129,11 +129,11 @@ export class ObjMesh {
     read_normal_data(line: string) {
         const components = line.split(" ");
         // ["vn", "nx", "ny", "nz"]
-        const new_normal: vec3 = [
+        const new_normal: Vec3 = vec3.create(
             Number(components[1]).valueOf(),
             Number(components[2]).valueOf(),
             Number(components[3]).valueOf()
-        ];
+        );
 
         this.vn.push(new_normal);
     }
@@ -178,8 +178,8 @@ export class ObjMesh {
         const stride = 8;
         const vertexCount = result.length / stride;
 
-        const tangents: vec3[] = [];
-        const bitangents: vec3[] = [];
+        const tangents: Vec3[] = [];
+        const bitangents: Vec3[] = [];
         
         for (let i = 0; i < vertexCount; i += 3) {
             const i0 = i * stride;
@@ -187,60 +187,49 @@ export class ObjMesh {
             const i2 = (i + 2) * stride;
 
             // Positions
-            const v0: vec3 = [result[i0], result[i0 + 1], result[i0 + 2]];
-            const v1: vec3 = [result[i1], result[i1 + 1], result[i1 + 2]];
-            const v2: vec3 = [result[i2], result[i2 + 1], result[i2 + 2]];
+            const v0: Vec3 = vec3.create(result[i0], result[i0 + 1], result[i0 + 2]);
+            const v1: Vec3 = vec3.create(result[i1], result[i1 + 1], result[i1 + 2]);
+            const v2: Vec3 = vec3.create(result[i2], result[i2 + 1], result[i2 + 2]);
 
             // UVs
-            const uv0: vec2 = [result[i0 + 3], result[i0 + 4]];
-            const uv1: vec2 = [result[i1 + 3], result[i1 + 4]];
-            const uv2: vec2 = [result[i2 + 3], result[i2 + 4]];
+            const uv0: Vec2 = vec2.create(result[i0 + 3], result[i0 + 4]);
+            const uv1: Vec2 = vec2.create(result[i1 + 3], result[i1 + 4]);
+            const uv2: Vec2 = vec2.create(result[i2 + 3], result[i2 + 4]);
 
-            const deltaPos1: vec3 = vec3.create();
-            const deltaPos2: vec3 = vec3.create();
-            vec3.subtract(deltaPos1, v1, v0);
-            vec3.subtract(deltaPos2, v2, v0);
+            const deltaPos1 = vec3.subtract(v1, v0);
+            const deltaPos2 = vec3.subtract(v2, v0);
 
-            const deltaUV1: vec2 = vec2.create();
-            const deltaUV2: vec2 = vec2.create();
-            vec2.subtract(deltaUV1, uv1, uv0);
-            vec2.subtract(deltaUV2, uv2, uv0);
+            const deltaUV1 = vec2.subtract(uv1, uv0);
+            const deltaUV2 = vec2.subtract(uv2, uv0);
 
             const denom = deltaUV1[0] * deltaUV2[1] - deltaUV1[1] * deltaUV2[0];
             const r = denom !== 0 ? 1.0 / denom : 0;
             
-            const tangent: vec3 = vec3.create();
-            const bitangent: vec3 = vec3.create();
+            const tangent: Vec3 = vec3.create(
+                r * (deltaUV2[1] * deltaPos1[0] - deltaUV1[1] * deltaPos2[0]),
+                r * (deltaUV2[1] * deltaPos1[1] - deltaUV1[1] * deltaPos2[1]),
+                r * (deltaUV2[1] * deltaPos1[2] - deltaUV1[1] * deltaPos2[2])
+            );
 
-            tangent[0] = r * (deltaUV2[1] * deltaPos1[0] - deltaUV1[1] * deltaPos2[0]);
-            tangent[1] = r * (deltaUV2[1] * deltaPos1[1] - deltaUV1[1] * deltaPos2[1]);
-            tangent[2] = r * (deltaUV2[1] * deltaPos1[2] - deltaUV1[1] * deltaPos2[2]);
+            const bitangent: Vec3 = vec3.create(
+                r * (-deltaUV2[0] * deltaPos1[0] + deltaUV1[0] * deltaPos2[0]),
+                r * (-deltaUV2[0] * deltaPos1[1] + deltaUV1[0] * deltaPos2[1]),
+                r * (-deltaUV2[0] * deltaPos1[2] + deltaUV1[0] * deltaPos2[2])
+            );
 
-            bitangent[0] = r * (-deltaUV2[0] * deltaPos1[0] + deltaUV1[0] * deltaPos2[0]);
-            bitangent[1] = r * (-deltaUV2[0] * deltaPos1[1] + deltaUV1[0] * deltaPos2[1]);
-            bitangent[2] = r * (-deltaUV2[0] * deltaPos1[2] + deltaUV1[0] * deltaPos2[2]);
-
-            vec3.normalize(tangent, tangent);
-            vec3.normalize(bitangent, bitangent);
+            const normalizedTangent = vec3.normalize(tangent);
+            const normalizedBitangent = vec3.normalize(bitangent);
 
             for (let j = 0; j < 3; j++) {
                 const idx = (i + j) * stride;
                 
-                const normal: vec3 = [result[idx + 5], result[idx + 6], result[idx + 7]];
-                const t: vec3 = vec3.create();
-                vec3.copy(t, tangent);
-                
-                const dot = vec3.dot(normal, tangent);
-                const temp: vec3 = vec3.create();
-                vec3.scale(temp, normal, dot);
-                vec3.subtract(t, t, temp);
-                vec3.normalize(t, t);
+                const normal: Vec3 = vec3.create(result[idx + 5], result[idx + 6], result[idx + 7]);
+                const dot = vec3.dot(normal, normalizedTangent);
+                const t = vec3.normalize(vec3.subtract(normalizedTangent, vec3.scale(normal, dot)));
+                const b = vec3.cross(normal, t);
 
-                const b: vec3 = vec3.create();
-                vec3.cross(b, normal, t);
-
-                tangents.push([t[0], t[1], t[2]]);
-                bitangents.push([b[0], b[1], b[2]]);
+                tangents.push(t as Vec3);
+                bitangents.push(b as Vec3);
             }
         }
 

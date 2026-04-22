@@ -22,7 +22,7 @@ fn vs_main(@builtin(vertex_index) VertexIndex: u32) -> VSOutput {
 
     var output : VSOutput;
 
-    output.Position = vec4(vertex_base, 0.0, 1.0);
+    output.Position = vec4(vertex_base, 1.0, 1.0);
     output.TexCoord = saturate(vec2(vertex_base * vec2(1.0, -1.0))) * 2.0;
 
     return output;

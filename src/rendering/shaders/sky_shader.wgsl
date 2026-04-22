@@ -26,7 +26,7 @@ const positions = array<vec2<f32>, 6>(
 fn vs_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
     var output : VertexOutput;
 
-    output.Position = vec4<f32>(positions[VertexIndex], 1.0, 1.0);
+    output.Position = vec4<f32>(positions[VertexIndex], 0.0, 1.0);
     var x: f32 = positions[VertexIndex].x;
     var y: f32 = positions[VertexIndex].y;
 
