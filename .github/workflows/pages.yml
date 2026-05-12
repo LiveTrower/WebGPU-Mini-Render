@@ -18,11 +18,16 @@ jobs:
         with:
           node-version: '20.x'
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
       - name: Install dependencies
-        run: npm run install-missing-dependencies
+        run: pnpm install-missing-dependencies
 
       - name: Build project
-        run: npm run build
+        run: pnpm build
       
       - name: Clean up for deploy
         run: |

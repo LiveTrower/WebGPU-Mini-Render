@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "npm run install-missing-dependencies && npm run build && npm run serve",
-    "install-missing-dependencies": "npm i --ignore-scripts",
+    "start": "pnpm install-missing-dependencies && pnpm build && pnpm serve",
+    "install-missing-dependencies": "pnpm install --ignore-scripts",
     "build": "webpack --config webpack.config.js",
     "serve": "live-server --cors"
   },
@@ -21,7 +21,6 @@
     "wgpu-matrix": "^3.4.2",
     "jquery": "^3.7.1",
     "live-server": "^1.2.2",
-    "node": "*",
     "ts-loader": "^9.5.4",
     "ts-shader-loader": "^2.1.0",
     "typescript": "^5.9.3",
