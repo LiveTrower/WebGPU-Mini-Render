@@ -10,6 +10,7 @@ import { BindGroupLayoutBuilder } from "./bind_group_layout";
 import { BindGroupBuilder } from "./bind_group";
 import { RenderPipelineBuilder } from "./pipeline";
 import { ToneMapper } from "./tone_mapper";
+import { Environment } from "../control/environment";
 import { Sky } from "./sky";
 import { ShadowMap } from "./shadow_map";
 import { FXAA } from "./fxaa";
@@ -37,6 +38,7 @@ export class Renderer {
 
     // Assets
     shadowMap: ShadowMap;
+    environment: Environment;
     sky: Sky;
     toneMapper: ToneMapper;
     fxaa: FXAA;
@@ -105,8 +107,9 @@ export class Renderer {
         await this.sky.makeBindGroupsLayout(builder);
 
         builder.addBuffer(GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, "uniform");
-        builder.addBuffer(GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, "uniform");
-        builder.addBuffer(GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, "uniform");
+        builder.addBuffer(GPUShaderStage.FRAGMENT, "uniform");
+        builder.addBuffer(GPUShaderStage.FRAGMENT, "uniform");
+        builder.addBuffer(GPUShaderStage.FRAGMENT, "uniform");
         builder.addBuffer(GPUShaderStage.VERTEX, "read-only-storage");
         builder.addDepthTexture(GPUShaderStage.FRAGMENT, "2d");
         this.lightBindGroupLayout = await builder.build();
@@ -149,6 +152,7 @@ export class Renderer {
         this.woodAlbedoTexture = new Texture();
         this.woodORMTexture = new Texture();
         this.woodNormalTexture = new Texture();
+        this.environment = new Environment(this.device);
         this.light = new Light3D(this.device);
 
         await this.shadowMap.initialize(this.device, vec2.create(1024, 1024));
@@ -182,6 +186,7 @@ export class Renderer {
         builder.setLayout(this.lightBindGroupLayout);
         builder.addBuffer(this.dataBuffer);
         builder.addBuffer(this.light.lightBuffer);
+        builder.addBuffer(this.environment.fogBuffer);
         builder.addBuffer(this.material3D.materialBuffer);
         builder.addBuffer(this.objectBuffer);
         builder.addTexture(this.shadowMap.texture.view, this.shadowMap.texture.sampler);
@@ -253,6 +258,27 @@ export class Renderer {
         lightData.set(this.light.position, 4);
         lightData[7] = this.light.shadowEnabled ? 1.0 : 0.0;
         this.device.queue.writeBuffer(this.light.lightBuffer, 0, lightData);
+
+        // Write color and density (offset 0)
+        const fogDataFloat = new Float32Array(4);
+        fogDataFloat[0] = this.environment.fogColor[0];
+        fogDataFloat[1] = this.environment.fogColor[1];
+        fogDataFloat[2] = this.environment.fogColor[2];
+        fogDataFloat[3] = this.environment.fogDensity;
+        this.device.queue.writeBuffer(this.environment.fogBuffer, 0, fogDataFloat);
+
+        const fogDataUint1 = new Uint32Array(1);
+        fogDataUint1[0] = this.environment.fogEnabled ? 1 : 0;
+        this.device.queue.writeBuffer(this.environment.fogBuffer, 16, fogDataUint1);
+
+        const fogDataNearFar = new Float32Array(2);
+        fogDataNearFar[0] = this.environment.fogNear;
+        fogDataNearFar[1] = this.environment.fogFar;
+        this.device.queue.writeBuffer(this.environment.fogBuffer, 20, fogDataNearFar);
+
+        const fogDataUint2 = new Uint32Array(1);
+        fogDataUint2[0] = this.environment.fogDepth ? 1 : 0;
+        this.device.queue.writeBuffer(this.environment.fogBuffer, 28, fogDataUint2);
         
         const materialData = new Float32Array(8);
         materialData.set(this.material3D.color, 0);

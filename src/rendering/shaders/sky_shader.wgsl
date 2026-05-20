@@ -36,5 +36,6 @@ fn vs_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 
 @fragment
 fn fs_main(@location(0) direction : vec3f) -> @location(0) vec4f {
-    return textureSample(skyTexture, skySampler, direction);
+    let sky_color = textureSample(skyTexture, skySampler, direction).rgb;
+    return vec4(sky_color, 1.0);
 }

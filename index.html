@@ -42,6 +42,52 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Environment Card -->
+            <div class="card">
+                <div class="card-title">🌐 Environment</div>
+                <div class="card-content">
+                    <div class="property">
+                        <span class="property-label">Fog</span>
+                        <span class="property-value">
+                            <input type="checkbox" id="fog-checkbox" checked>
+                        </span>
+                    </div>
+                    <div class="property">
+                        <span class="property-label">Color</span>
+                        <div class="color-picker-container">
+                            <input type="color" id="fog-color" value="#ffffff" class="color-picker">
+                        </div>
+                    </div>
+                    <div class="property">
+                        <span class="property-label">Density</span>
+                        <div class="slider-container">
+                            <input type="range" id="fog-density" min="0.0" max="5.0" step="0.001" value="0.02" class="slider">
+                            <span class="slider-value" id="fog-density-value">0.02</span>
+                        </div>
+                    </div>
+                    <div class="property">
+                        <span class="property-label">Depth Fog</span>
+                        <span class="property-value">
+                            <input type="checkbox" id="depth-fog-checkbox" unchecked>
+                        </span>
+                    </div>
+                    <div class="property">
+                        <span class="property-label">Near</span>
+                        <div class="slider-container">
+                            <input type="range" id="fog-near" min="0.0" max="5.0" step="0.01" value="1.0" class="slider">
+                            <span class="slider-value" id="fog-near-value">1.0</span>
+                        </div>
+                    </div>
+                    <div class="property">
+                        <span class="property-label">Far</span>
+                        <div class="slider-container">
+                            <input type="range" id="fog-far" min="0.0" max="10.0" step="0.01" value="4.0" class="slider">
+                            <span class="slider-value" id="fog-far-value">4.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <!-- Light Card -->
             <div class="card">

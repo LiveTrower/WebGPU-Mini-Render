@@ -62,30 +62,27 @@ fn screen_space_dither(frag_coord : vec2f, bit_alignment_diviser : f32) -> vec3f
 // Adapted from https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
 // (MIT License).
 fn tonemap_aces(color: vec3f) -> vec3f {
-	// These constants must match the those in the C++ code that calculates the parameters.
-	let exposure_bias = 1.8f;
 	let A = 0.0245786f;
 	let B = 0.000090537f;
 	let C = 0.983729f;
 	let D = 0.432951f;
 	let E = 0.238081f;
 
-	// Exposure bias baked into transform to save shader instructions. Equivalent to `color *= exposure_bias`
 	let rgb_to_rrt = mat3x3f(
-			vec3(0.59719f * exposure_bias, 0.35458f * exposure_bias, 0.04823f * exposure_bias),
-			vec3(0.07600f * exposure_bias, 0.90834f * exposure_bias, 0.01566f * exposure_bias),
-			vec3(0.02840f * exposure_bias, 0.13383f * exposure_bias, 0.83777f * exposure_bias));
+			vec3(0.59719f, 0.35458f, 0.04823f),
+			vec3(0.07600f, 0.90834f, 0.01566f),
+			vec3(0.02840f, 0.13383f, 0.83777f));
 
 	let odt_to_rgb = mat3x3f(
 			vec3(1.60475f, -0.53108f, -0.07367f),
 			vec3(-0.10208f, 1.10813f, -0.00605f),
 			vec3(-0.00327f, -0.07276f, 1.07602f));
 
-	let new_color = max(vec3(0.0), color) * rgb_to_rrt;
+	let new_color = color * rgb_to_rrt;
 	var color_tonemapped = (new_color * (new_color + A) - B) / (new_color * (C * new_color + D) + E);
 	color_tonemapped *= odt_to_rgb;
 
-	return color_tonemapped;
+	return saturate(color_tonemapped);
 }
 
 @fragment

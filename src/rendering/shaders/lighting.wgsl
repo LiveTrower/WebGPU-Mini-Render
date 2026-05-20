@@ -18,6 +18,15 @@ struct LightUniforms {
 	shadow_enabled: u32
 };
 
+struct FogUniforms {
+	color: vec3f,
+	density: f32,
+	enabled: u32,
+	near: f32,
+	far: f32,
+	depth: u32
+}
+
 struct MaterialUniforms {
 	color: vec3f,
 	metallic: f32,
@@ -27,10 +36,11 @@ struct MaterialUniforms {
 
 @binding(0) @group(0) var<uniform> global: GlobalUniforms;
 @binding(1) @group(0) var<uniform> light: LightUniforms;
-@binding(2) @group(0) var<uniform> material: MaterialUniforms;
-@binding(3) @group(0) var<storage, read> objects: ObjectData;
-@binding(4) @group(0) var shadowMap: texture_depth_2d;
-@binding(5) @group(0) var shadowSampler: sampler_comparison;
+@binding(2) @group(0) var<uniform> fog: FogUniforms;
+@binding(3) @group(0) var<uniform> material: MaterialUniforms;
+@binding(4) @group(0) var<storage, read> objects: ObjectData;
+@binding(5) @group(0) var shadowMap: texture_depth_2d;
+@binding(6) @group(0) var shadowSampler: sampler_comparison;
 
 @binding(0) @group(1) var albedoTexture: texture_2d<f32>;
 @binding(1) @group(1) var albedoSampler: sampler;
@@ -148,6 +158,17 @@ fn specular_lobe(roughness: f32, metallic: f32, f0: vec3f, cNdotH: f32, cNdotL: 
 	let f90 = clamp(dot(f0, vec3(50.0 * 0.33)), metallic, 1.0);
 	let F = SchlickFresnel(f0, f90, cLdotH);
 	return D * G * F;
+}
+
+fn apply_fog(color: vec3f, pos: vec3f) -> vec3f {
+	let positionVS = (global.viewMatrix * vec4(pos, 1.0)).xyz;
+	var fog_amount = 0.0;
+	if (fog.depth == 0u) {
+		fog_amount = 1.0 - exp(min(0, -length(positionVS) * fog.density));
+	} else {
+		fog_amount = smoothstep(fog.near, fog.far, length(positionVS)) * fog.density;
+	}
+	return mix(color, fog.color, fog_amount);
 }
 
 fn shadows(shadowPos: vec3f) -> f32 {
@@ -305,6 +326,7 @@ fn fs_main(vsOut: VSOutput) -> @location(0) vec4f {
 	let roughness = material.roughness * orm_map.g;
 	let ao = orm_map.r;
 	let normal = normal_tangent(normal_map, tbnMatrix); // Normal view-space
-    let color = directional_light(albedo, roughness, ao, vsOut.positionWS, normal, vsOut.shadowPos);
+    var color = directional_light(albedo, roughness, ao, vsOut.positionWS, normal, vsOut.shadowPos);
+	if (fog.enabled == 1u) { color = apply_fog(color, vsOut.positionWS); }
     return vec4(color, 1.0);
 }
