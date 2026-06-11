@@ -120,4 +120,33 @@ export class App {
         }
     }
 
+    minimizeMaximizeCard() {
+        // Card minimize/maximize functionality
+        document.querySelectorAll('.card-toggle').forEach(button => {
+            button.addEventListener('click', (e: Event) => {
+                e.stopPropagation();
+                const card = (button as HTMLElement).closest('.card');
+                if (card) {
+                    card.classList.toggle('minimized');
+                    const isMinimized = card.classList.contains('minimized');
+                    button.textContent = isMinimized ? '+' : '−';
+                    (button as HTMLButtonElement).setAttribute('aria-label', 
+                        isMinimized ? 'Expand card' : 'Minimize card'
+                    );
+                }
+            });
+        });
+
+        // Also allow clicking on the title to minimize/maximize
+        document.querySelectorAll('.card-title').forEach(title => {
+            title.addEventListener('click', (e: Event) => {
+                const target = e.target as HTMLElement;
+                if (target === title || target.classList.contains('card-title-text')) {
+                    const button = title.querySelector('.card-toggle') as HTMLButtonElement;
+                    button.click();
+                }
+            });
+        });
+    }
+
 }
