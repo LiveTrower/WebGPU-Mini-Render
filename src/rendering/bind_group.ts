@@ -1,64 +1,63 @@
 export class BindGroupBuilder {
-    device: GPUDevice;
-    layout: GPUBindGroupLayout;
-    entries: GPUBindGroupEntry[];
-    binding: number;
+	device: GPUDevice;
+	layout: GPUBindGroupLayout;
+	entries: GPUBindGroupEntry[];
+	binding: number;
 
-    constructor(device: GPUDevice) {
-        this.device = device;
-        this.reset();
-    }
+	constructor(device: GPUDevice) {
+		this.device = device;
+		this.reset();
+	}
 
-    reset() {
-        this.entries = [];
-        this.binding = 0;
-    }
+	reset() {
+		this.entries = [];
+		this.binding = 0;
+	}
 
-    setLayout(layout: GPUBindGroupLayout) {
-        this.layout = layout;
-    }
+	setLayout(layout: GPUBindGroupLayout) {
+		this.layout = layout;
+	}
 
-    addBuffer(buffer: GPUBuffer) {
-        this.entries.push({
-            binding: this.binding,
-            resource: {
-                buffer: buffer
-            }
-        });
-        this.binding += 1;
-    }
+	addBuffer(buffer: GPUBuffer) {
+		this.entries.push({
+			binding: this.binding,
+			resource: {
+				buffer: buffer,
+			},
+		});
+		this.binding += 1;
+	}
 
-    addTexture(view: GPUTextureView, sampler: GPUSampler) {
-        this.entries.push({
-            binding: this.binding,
-            resource: view
-        });
-        this.binding += 1;
+	addTexture(view: GPUTextureView, sampler: GPUSampler) {
+		this.entries.push({
+			binding: this.binding,
+			resource: view,
+		});
+		this.binding += 1;
 
-        this.entries.push({
-            binding: this.binding,
-            resource: sampler
-        });
-        this.binding += 1;
-    }
+		this.entries.push({
+			binding: this.binding,
+			resource: sampler,
+		});
+		this.binding += 1;
+	}
 
-    addStorageTexture(view: GPUTextureView) {
-        this.entries.push({
-            binding: this.binding,
-            resource: view
-        });
-        this.binding += 1;
-    }
+	addStorageTexture(view: GPUTextureView) {
+		this.entries.push({
+			binding: this.binding,
+			resource: view,
+		});
+		this.binding += 1;
+	}
 
-    async build(): Promise<GPUBindGroup> {
+	async build(): Promise<GPUBindGroup> {
+		const bindGroup = await this.device.createBindGroup({
+			layout: this.layout,
+			entries: this.entries,
+		});
 
-        const bindGroup = await this.device.createBindGroup({
-            layout: this.layout,
-            entries: this.entries
-        });
+		this.reset();
 
-        this.reset();
-
-        return bindGroup;
-    }
+		return bindGroup;
+	}
 }
