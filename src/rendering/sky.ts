@@ -1,4 +1,5 @@
 import sky_shader from "./shaders/sky_shader.wgsl";
+import { Vec3, vec3 } from "wgpu-matrix";
 import { Camera3D } from "../control/camera3d";
 import { CubeMapTexture } from "../resources/cube_texture";
 import { RenderPipelineBuilder } from "./pipeline";
@@ -15,7 +16,7 @@ export class Sky {
     async initialize(device: GPUDevice) {
         const parameterBufferDescriptor: GPUBufferDescriptor = {
             label: "sky_buffer",
-            size: 48,
+            size: 128,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         };
         this.buffer = device.createBuffer(parameterBufferDescriptor);
@@ -25,7 +26,7 @@ export class Sky {
     }
 
     async makeBindGroupsLayout(builder: BindGroupLayoutBuilder) {
-        builder.addBuffer(GPUShaderStage.VERTEX, "uniform");
+        builder.addBuffer(GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, "uniform");
         builder.addTexture(GPUShaderStage.FRAGMENT, "cube");
         this.bindGroupLayout = await builder.build();
     }
@@ -46,28 +47,23 @@ export class Sky {
         this.pipeline = await builder.buildRenderPipeline();
     }
 
-    writeBuffer(device: GPUDevice, camera: Camera3D, height: number, width: number) {
+    writeBuffer(device: GPUDevice, camera: Camera3D, height: number, width: number, fog_enabled: boolean, fog_color: Vec3, sky_effect: number) {
         const dy = Math.tan(Math.PI/8);
         const dx = dy * width / height;
 
-        device.queue.writeBuffer(
-            this.buffer, 0,
-            new Float32Array(
-                [
-                    camera.forwards[0],
-                    camera.forwards[1],
-                    camera.forwards[2],
-                    0.0,
-                    dx * camera.right[0],
-                    dx * camera.right[1],
-                    dx * camera.right[2],
-                    0.0,
-                    dy * camera.up[0],
-                    dy * camera.up[1],
-                    dy * camera.up[2],
-                    0.0
-                ]
-            ), 0, 12
-        )
+        const skyData = new Float32Array(32);
+        const rightScaled = vec3.scale(camera.right, dx);
+        const upScaled = vec3.scale(camera.up, dy);
+
+        skyData.set(camera.forwards, 0);
+        skyData.set(rightScaled, 4);
+        skyData.set(upScaled, 8);
+        skyData.set(fog_color, 12);
+        skyData[15] = sky_effect;
+
+        const dataView = new DataView(skyData.buffer);
+        dataView.setUint32(64, fog_enabled ? 1 : 0, true);
+
+        device.queue.writeBuffer(this.buffer, 0, skyData);
     }
 }

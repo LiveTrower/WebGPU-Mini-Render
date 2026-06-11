@@ -10,6 +10,7 @@ import { BindGroupLayoutBuilder } from "./bind_group_layout";
 import { BindGroupBuilder } from "./bind_group";
 import { RenderPipelineBuilder } from "./pipeline";
 import { ToneMapper } from "./tone_mapper";
+import { Fog } from "./fog";
 import { Environment } from "../control/environment";
 import { Sky } from "./sky";
 import { ShadowMap } from "./shadow_map";
@@ -39,6 +40,7 @@ export class Renderer {
     // Assets
     shadowMap: ShadowMap;
     environment: Environment;
+    fog: Fog;
     sky: Sky;
     toneMapper: ToneMapper;
     fxaa: FXAA;
@@ -55,8 +57,10 @@ export class Renderer {
 
     constructor(canvas: HTMLCanvasElement){
         this.canvas = canvas;
+        this.environment = new Environment();
         this.shadowMap = new ShadowMap();
         this.sky = new Sky();
+        this.fog = new Fog();
         this.toneMapper = new ToneMapper();
         this.fxaa = new FXAA();
         this.framebuffers = new FrameBuffers();
@@ -152,11 +156,11 @@ export class Renderer {
         this.woodAlbedoTexture = new Texture();
         this.woodORMTexture = new Texture();
         this.woodNormalTexture = new Texture();
-        this.environment = new Environment(this.device);
         this.light = new Light3D(this.device);
 
         await this.shadowMap.initialize(this.device, vec2.create(1024, 1024));
         await this.sky.initialize(this.device);
+        await this.fog.initialize(this.device);
 
         this.objectBuffer = this.device.createBuffer({
             label: "model_buffer",
@@ -186,7 +190,7 @@ export class Renderer {
         builder.setLayout(this.lightBindGroupLayout);
         builder.addBuffer(this.dataBuffer);
         builder.addBuffer(this.light.lightBuffer);
-        builder.addBuffer(this.environment.fogBuffer);
+        builder.addBuffer(this.fog.fogBuffer);
         builder.addBuffer(this.material3D.materialBuffer);
         builder.addBuffer(this.objectBuffer);
         builder.addTexture(this.shadowMap.texture.view, this.shadowMap.texture.sampler);
@@ -235,7 +239,10 @@ export class Renderer {
     }
 
     prepareScene(renderables: RenderData, camera: Camera3D) {
-        this.sky.writeBuffer(this.device, camera, this.framebuffers.canvasHeight, this.framebuffers.canvasWidth);
+        this.sky.writeBuffer(
+            this.device, camera, this.framebuffers.canvasHeight, this.framebuffers.canvasWidth, 
+            this.environment.fogEnabled, this.environment.fogColor, this.environment.fogSkyEffect
+        );
 
         this.device.queue.writeBuffer(
             this.objectBuffer, 0, 
@@ -259,26 +266,12 @@ export class Renderer {
         lightData[7] = this.light.shadowEnabled ? 1.0 : 0.0;
         this.device.queue.writeBuffer(this.light.lightBuffer, 0, lightData);
 
-        // Write color and density (offset 0)
-        const fogDataFloat = new Float32Array(4);
-        fogDataFloat[0] = this.environment.fogColor[0];
-        fogDataFloat[1] = this.environment.fogColor[1];
-        fogDataFloat[2] = this.environment.fogColor[2];
-        fogDataFloat[3] = this.environment.fogDensity;
-        this.device.queue.writeBuffer(this.environment.fogBuffer, 0, fogDataFloat);
-
-        const fogDataUint1 = new Uint32Array(1);
-        fogDataUint1[0] = this.environment.fogEnabled ? 1 : 0;
-        this.device.queue.writeBuffer(this.environment.fogBuffer, 16, fogDataUint1);
-
-        const fogDataNearFar = new Float32Array(2);
-        fogDataNearFar[0] = this.environment.fogNear;
-        fogDataNearFar[1] = this.environment.fogFar;
-        this.device.queue.writeBuffer(this.environment.fogBuffer, 20, fogDataNearFar);
-
-        const fogDataUint2 = new Uint32Array(1);
-        fogDataUint2[0] = this.environment.fogDepth ? 1 : 0;
-        this.device.queue.writeBuffer(this.environment.fogBuffer, 28, fogDataUint2);
+        this.fog.writeBuffer(
+            this.device, this.environment.fogEnabled,
+            this.environment.fogColor, this.environment.fogDensity,
+            this.environment.fogDepth, this.environment.fogNear,
+            this.environment.fogFar
+        );
         
         const materialData = new Float32Array(8);
         materialData.set(this.material3D.color, 0);
