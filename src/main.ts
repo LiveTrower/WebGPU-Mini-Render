@@ -7,6 +7,7 @@ async function startApp() {
 
     try {
         await app.InitializeRenderer();
+        app.minimizeMaximizeCard();
         
         app.run(); 
     } catch (error) {

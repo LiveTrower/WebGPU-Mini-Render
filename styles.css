@@ -119,6 +119,10 @@ body {
     letter-spacing: 1px;
     padding-bottom: 12px;
     border-bottom: 2px solid #3a3a3a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
 }
 
 .card-content {
@@ -296,4 +300,44 @@ body {
 
 .status-off {
     background-color: #555;
+}
+
+/* Card minimize/maximize styles */
+.card-title-text {
+    flex: 1;
+}
+
+.card-toggle {
+    background: none;
+    border: none;
+    color: #00d4ff;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.card-toggle:hover {
+    color: #00ffff;
+    transform: scale(1.2);
+}
+
+.card-content {
+    max-height: 1000px;
+    opacity: 1;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.card.minimized .card-content {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
 }
